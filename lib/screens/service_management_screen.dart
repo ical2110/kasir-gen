@@ -61,6 +61,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen> {
       if (confirm != true) return;
 
       await apiService.deleteService(id);
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Layanan berhasil dihapus')),
       );

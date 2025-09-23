@@ -137,6 +137,7 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
       );
 
       await _apiService.addTransaction(transactionData);
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Transaksi berhasil disimpan!')),
       );

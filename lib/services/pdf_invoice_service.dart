@@ -46,7 +46,7 @@ class PdfInvoiceService {
                     crossAxisAlignment: pw.CrossAxisAlignment.end,
                     children: [
                       pw.Text(
-                          'No. Transaksi: ${transaction.id.length > 8 ? '${transaction.id.substring(0, 8)}...' : transaction.id}'),
+                          'No. Transaksi: ${transaction.id.length > 8 ? transaction.id.substring(0, 8) : transaction.id}...'),
                       // Gunakan tanggal selesai jika ada, jika tidak gunakan tanggal dibuat
                       pw.Text(// Perbaikan: Menggunakan tanggal yang benar
                           'Tanggal: ${dateFormatter.format(transaction.completedAt ?? transaction.createdAt ?? DateTime.now())}'),
@@ -61,7 +61,7 @@ class PdfInvoiceService {
                   style: pw.TextStyle(
                       fontWeight: pw.FontWeight.bold, fontSize: 16)),
               pw.Divider(),
-              pw.Table.fromTextArray(
+              pw.TableHelper.fromTextArray(
                 headers: ['Layanan', 'Kuantitas', 'Harga Satuan', 'Total'],
                 data: [
                   // Perbaikan: Menambahkan pengecekan untuk menghindari pembagian dengan nol

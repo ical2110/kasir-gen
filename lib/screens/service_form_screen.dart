@@ -108,11 +108,13 @@ class _ServiceFormScreenState extends State<ServiceFormScreen> {
 
         if (isEditing) {
           await apiService.updateService(serviceData);
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Layanan berhasil diperbarui!')),
           );
         } else {
           await apiService.addService(serviceData);
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Layanan baru berhasil disimpan!')),
           );

@@ -59,12 +59,14 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
 
         if (isEditing) {
           await apiService.updateCustomer(customerData);
+          if (!mounted) return;
           // Tampilkan pesan sukses
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Pelanggan berhasil diperbarui!')),
           );
         } else {
           await apiService.addCustomer(customerData);
+          if (!mounted) return;
           // Tampilkan pesan sukses
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Pelanggan baru berhasil disimpan!')),

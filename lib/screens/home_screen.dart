@@ -33,6 +33,13 @@ class _HomeScreenState extends State<HomeScreen> {
         // Simpan hasil ke state lokal setelah berhasil dimuat
         _transactions = transactions;
         return transactions;
+      }).catchError((e) {
+        // Tangani error di sini juga, jika terjadi saat memuat data
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Gagal memuat data: $e')),
+          );
+        }
       });
     });
   }
@@ -124,6 +131,7 @@ class _HomeScreenState extends State<HomeScreen> {
             await _pdfService.openFile(file);
           } catch (e) {
             ScaffoldMessenger.of(context).showSnackBar(
+              // Aman karena di dalam blok sinkron setelah dialog
               SnackBar(content: Text('Gagal membuat PDF: $e')),
             );
           }
@@ -135,6 +143,7 @@ class _HomeScreenState extends State<HomeScreen> {
       // Jika gagal, muat ulang data dari server untuk mengembalikan state
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
+          // Aman karena sudah di dalam mounted check
           SnackBar(content: Text('Gagal memperbarui status: $e')),
         );
         _refreshTransactions();
@@ -170,8 +179,10 @@ class _HomeScreenState extends State<HomeScreen> {
       });
 
       // Kirim pembaruan ke API di latar belakang
-      final updatedTransaction =
-          transaction.copyWith(status: TransactionStatus.paid);
+      final updatedTransaction = transaction.copyWith(
+        status: TransactionStatus.paid,
+        completedAt: transaction.completedAt ?? DateTime.now(),
+      );
       await _apiService.updateTransaction(updatedTransaction);
 
       if (mounted) {

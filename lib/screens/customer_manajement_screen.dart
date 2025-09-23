@@ -59,16 +59,20 @@ class _CustomerManagementScreenState extends State<CustomerManagementScreen> {
 
       if (confirm == true) {
         await apiService.deleteCustomer(id);
+        // Guard with mounted check
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Pelanggan berhasil dihapus')));
+            const SnackBar(content: Text('Pelanggan berhasil dihapus')));
         // Refresh list
         setState(() {
           _customersFuture = apiService.getCustomers();
         });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Gagal menghapus: $e')));
+      // Guard with mounted check
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal menghapus pelanggan: $e')));
     }
   }
 
