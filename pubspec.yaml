@@ -43,6 +43,8 @@ dependencies:
   url_launcher: ^6.3.2
   firebase_core: ^2.32.0
   cloud_firestore: ^4.10.0
+  excel: ^4.0.2 # Untuk membuat dan mengelola file Excel
+  permission_handler: ^11.3.1 # Untuk menangani izin penyimpanan
 
 dev_dependencies:
   flutter_test:

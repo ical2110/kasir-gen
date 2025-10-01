@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:kasir_gen/screens/transaction_form_screen.dart';
 import '../models/transaction.dart';
 import '../services/api_service.dart';
+import '../services/export_service.dart'; // Import service ekspor
 
 class TransactionManagementScreen extends StatefulWidget {
   const TransactionManagementScreen({super.key});
@@ -15,6 +16,7 @@ class TransactionManagementScreen extends StatefulWidget {
 class _TransactionManagementScreenState
     extends State<TransactionManagementScreen> {
   final ApiService _apiService = ApiService();
+  final ExportService _exportService = ExportService(); // Inisialisasi service
   late Future<List<Transaction>> _transactionsFuture;
 
   @override
@@ -81,10 +83,19 @@ class _TransactionManagementScreenState
         NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
     final dateFormatter =
         DateFormat('dd MMM yyyy, HH:mm', 'id_ID'); // Formatter untuk tanggal
+    List<Transaction> currentTransactions = []; // Untuk menyimpan data saat ini
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Manajemen Transaksi'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.download_for_offline),
+            onPressed: () => _exportService.exportTransactionsToXls(
+                context, currentTransactions),
+            tooltip: 'Ekspor ke Excel',
+          ),
+        ],
       ),
       body: FutureBuilder<List<Transaction>>(
         future: _transactionsFuture,
@@ -97,11 +108,11 @@ class _TransactionManagementScreenState
             return const Center(child: Text('Belum ada transaksi.'));
           }
 
-          final transactions = snapshot.data!;
+          currentTransactions = snapshot.data!; // Simpan data ke variabel
           return ListView.builder(
-            itemCount: transactions.length,
+            itemCount: currentTransactions.length,
             itemBuilder: (context, index) {
-              final trx = transactions[index];
+              final trx = currentTransactions[index];
               return Card(
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: ListTile(
