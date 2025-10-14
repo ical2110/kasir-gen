@@ -63,18 +63,14 @@ class PdfInvoiceService {
               pw.Divider(),
               pw.TableHelper.fromTextArray(
                 headers: ['Layanan', 'Kuantitas', 'Harga Satuan', 'Total'],
-                data: [
-                  // Perbaikan: Menambahkan pengecekan untuk menghindari pembagian dengan nol
-                  [
-                    transaction.service?.name ?? 'Layanan',
-                    transaction.quantity.toString(),
-                    transaction.quantity > 0
-                        ? currencyFormatter.format(
-                            transaction.totalAmount / transaction.quantity)
-                        : currencyFormatter.format(0),
-                    currencyFormatter.format(transaction.totalAmount),
-                  ],
-                ],
+                data: transaction.items.map((item) {
+                  return [
+                    item.serviceName,
+                    item.quantity.toString(),
+                    currencyFormatter.format(item.price),
+                    currencyFormatter.format(item.subtotal),
+                  ];
+                }).toList(),
                 headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
                 cellAlignment: pw.Alignment.centerLeft,
                 headerDecoration:

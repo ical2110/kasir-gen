@@ -19,7 +19,6 @@ class _HomeScreenState extends State<HomeScreen> {
   final PrintingService _printingService = PrintingService();
   final PdfInvoiceService _pdfService = PdfInvoiceService();
   late Future<List<Transaction>> _transactionsFuture;
-  List<Transaction> _transactions = []; // State untuk menyimpan data transaksi
 
   @override
   void initState() {
@@ -29,17 +28,19 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _refreshTransactions() {
     setState(() {
-      _transactionsFuture = _apiService.getTransactions().then((transactions) {
-        // Simpan hasil ke state lokal setelah berhasil dimuat
-        _transactions = transactions;
-        return transactions;
-      }).catchError((e) {
+      // Hanya ambil transaksi yang statusnya 'in_progress' atau 'completed'
+      _transactionsFuture = _apiService.getTransactions(statuses: [
+        TransactionStatus.in_progress,
+        TransactionStatus.completed,
+      ]).catchError((e) {
         // Tangani error di sini juga, jika terjadi saat memuat data
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Gagal memuat data: $e')),
           );
         }
+        // Kembalikan list kosong atau throw error agar FutureBuilder bisa menanganinya
+        return <Transaction>[];
       });
     });
   }
@@ -80,22 +81,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
     try {
       // Optimistic UI Update yang lebih ringkas dan aman
-      final transactionIndex =
-          _transactions.indexWhere((t) => t.id == transaction.id);
-      setState(() {
-        if (transactionIndex != -1) {
-          _transactions[transactionIndex] =
-              transaction.copyWith(status: TransactionStatus.completed);
-        }
-      });
-
-      // Kirim pembaruan ke API di latar belakang
+      // Tidak perlu update state manual, cukup refresh data dari server
+      // setelah operasi berhasil.
       final updatedTransaction = transaction.copyWith(
-        status:
-            TransactionStatus.completed, // Perbaikan: Menggunakan completedAt
+        status: TransactionStatus.completed,
         completedAt: DateTime.now(),
       );
+
       await _apiService.updateTransaction(updatedTransaction);
+
+      // Panggil refresh untuk memuat ulang data dari server
+      _refreshTransactions();
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -174,9 +170,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     try {
       // Optimistic UI Update: Hapus item dari daftar lokal secara langsung
-      setState(() {
-        _transactions.removeWhere((t) => t.id == transaction.id);
-      });
+      // Tidak perlu update state manual, cukup refresh data dari server.
 
       // Kirim pembaruan ke API di latar belakang
       final updatedTransaction = transaction.copyWith(
@@ -184,6 +178,9 @@ class _HomeScreenState extends State<HomeScreen> {
         completedAt: transaction.completedAt ?? DateTime.now(),
       );
       await _apiService.updateTransaction(updatedTransaction);
+
+      // Panggil refresh untuk memuat ulang data dari server
+      _refreshTransactions();
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -228,15 +225,9 @@ class _HomeScreenState extends State<HomeScreen> {
           if (snapshot.hasError) {
             return Center(child: Text('Error: ${snapshot.error}'));
           }
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text('Tidak ada transaksi.'));
-          }
 
-          // Gunakan state _transactions yang sudah aman
-          // Filter transaksi yang belum dibayar (in_progress atau completed)
-          final activeTransactions = _transactions
-              .where((trx) => trx.status != TransactionStatus.paid)
-              .toList();
+          // Langsung gunakan data dari snapshot.
+          final activeTransactions = snapshot.data ?? [];
 
           if (activeTransactions.isEmpty &&
               snapshot.connectionState == ConnectionState.done) {
@@ -256,7 +247,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: ListTile(
                   title: Text(trx.customer?.name ?? 'ID: ${trx.customerId}'),
                   subtitle: Text(
-                      '${trx.service?.name ?? 'ID: ${trx.serviceId}'}\n${currencyFormatter.format(trx.totalAmount)}'),
+                      '${trx.items.map((e) => e.serviceName).join(', ')}\n${currencyFormatter.format(trx.totalAmount)}'),
                   trailing: isInProgress
                       ? const Column(
                           mainAxisAlignment: MainAxisAlignment.center,

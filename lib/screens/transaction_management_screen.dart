@@ -17,7 +17,10 @@ class _TransactionManagementScreenState
     extends State<TransactionManagementScreen> {
   final ApiService _apiService = ApiService();
   final ExportService _exportService = ExportService(); // Inisialisasi service
+  DateTime _selectedDate = DateTime.now();
   late Future<List<Transaction>> _transactionsFuture;
+  List<Transaction> _currentTransactions =
+      []; // Variabel state untuk menyimpan data
 
   @override
   void initState() {
@@ -27,8 +30,16 @@ class _TransactionManagementScreenState
 
   void _refreshTransactions() {
     setState(() {
-      // Asumsi getTransactions akan melakukan join dan mengambil nama customer/service
-      _transactionsFuture = _apiService.getTransactions();
+      // Memulai future untuk FutureBuilder
+      final future = _apiService.getTransactions(
+        year: _selectedDate.year,
+        month: _selectedDate.month,
+      );
+      _transactionsFuture = future;
+
+      // Setelah future selesai, perbarui state _currentTransactions
+      // Ini memastikan data untuk ekspor selalu sinkron.
+      future.then((transactions) => _currentTransactions = transactions);
     });
   }
 
@@ -68,7 +79,15 @@ class _TransactionManagementScreenState
       if (confirm != true) return;
 
       await _apiService.deleteTransaction(id);
+      // Refresh data untuk bulan yang sedang ditampilkan
       _refreshTransactions();
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Transaksi berhasil dihapus.'),
+            backgroundColor: Colors.green),
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -77,13 +96,23 @@ class _TransactionManagementScreenState
     }
   }
 
+  void _changeMonth(int increment) {
+    setState(() {
+      _selectedDate =
+          DateTime(_selectedDate.year, _selectedDate.month + increment, 1);
+      _refreshTransactions();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final currencyFormatter =
         NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
     final dateFormatter =
         DateFormat('dd MMM yyyy, HH:mm', 'id_ID'); // Formatter untuk tanggal
-    List<Transaction> currentTransactions = []; // Untuk menyimpan data saat ini
+    final now = DateTime.now();
+    final isCurrentOrFutureMonth = _selectedDate.year > now.year ||
+        (_selectedDate.year == now.year && _selectedDate.month >= now.month);
 
     return Scaffold(
       appBar: AppBar(
@@ -91,65 +120,106 @@ class _TransactionManagementScreenState
         actions: [
           IconButton(
             icon: const Icon(Icons.download_for_offline),
+            // Langsung ekspor data bulan yang sedang ditampilkan
             onPressed: () => _exportService.exportTransactionsToXls(
-                context, currentTransactions),
+                context, _currentTransactions, 'Laporan_Transaksi'),
             tooltip: 'Ekspor ke Excel',
           ),
         ],
       ),
-      body: FutureBuilder<List<Transaction>>(
-        future: _transactionsFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text('Belum ada transaksi.'));
-          }
-
-          currentTransactions = snapshot.data!; // Simpan data ke variabel
-          return ListView.builder(
-            itemCount: currentTransactions.length,
-            itemBuilder: (context, index) {
-              final trx = currentTransactions[index];
-              return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: ListTile(
-                  title: Text(
-                    // Anda perlu memodifikasi API untuk mengirim nama customer dan service
-                    // Untuk sementara, kita tampilkan ID-nya
-                    'Pelanggan: ${trx.customer?.name ?? trx.customerId}',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Layanan: ${trx.service?.name ?? trx.serviceId}'),
-                      Text('Status: ${statusToDisplayString(trx.status)}'),
-                      Text(
-                          'Total: ${currencyFormatter.format(trx.totalAmount)}'),
-                      if (trx.createdAt != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 4.0),
-                          child: Text(
-                            'Tgl: ${dateFormatter.format(trx.createdAt!)}',
-                            style: TextStyle(
-                                color: Colors.grey.shade600, fontSize: 12),
-                          ),
-                        ),
-                    ],
-                  ),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete_outline, color: Colors.red),
-                    onPressed: () => _deleteTransaction(trx.id),
-                    tooltip: 'Hapus Transaksi',
-                  ),
+      body: Column(
+        children: [
+          // Widget untuk Filter Bulan
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            color: Colors.blue.withOpacity(0.1),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.chevron_left),
+                  onPressed: () => _changeMonth(-1),
+                  tooltip: 'Bulan Sebelumnya',
                 ),
-              );
-            },
-          );
-        },
+                Text(
+                  DateFormat('MMMM yyyy', 'id_ID').format(_selectedDate),
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.chevron_right),
+                  // Tombol dinonaktifkan jika bulan yang dipilih adalah bulan ini atau masa depan
+                  onPressed:
+                      isCurrentOrFutureMonth ? null : () => _changeMonth(1),
+                  tooltip: 'Bulan Berikutnya',
+                ),
+              ],
+            ),
+          ),
+          // Daftar Transaksi
+          Expanded(
+            child: FutureBuilder<List<Transaction>>(
+              future: _transactionsFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                } else if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return const Center(
+                      child: Text('Tidak ada transaksi pada bulan ini.'));
+                }
+
+                // Langsung gunakan data dari snapshot dan simpan ke state.
+                // Ini adalah sumber data tunggal untuk UI dan ekspor.
+                final transactions = snapshot.data!;
+
+                return ListView.builder(
+                  itemCount: transactions.length,
+                  itemBuilder: (context, index) {
+                    final trx = transactions[index];
+                    return Card(
+                      margin: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
+                      child: ListTile(
+                        title: Text(
+                          'Pelanggan: ${trx.customer?.name ?? trx.customerId}',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                                'Layanan: ${trx.items.map((e) => e.serviceName).join(', ')}'),
+                            Text(
+                                'Status: ${statusToDisplayString(trx.status)}'),
+                            Text(
+                                'Total: ${currencyFormatter.format(trx.totalAmount)}'),
+                            if (trx.createdAt != null)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4.0),
+                                child: Text(
+                                    'Tgl: ${dateFormatter.format(trx.createdAt!)}',
+                                    style: TextStyle(
+                                        color: Colors.grey.shade600,
+                                        fontSize: 12)),
+                              ),
+                          ],
+                        ),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.delete_outline,
+                              color: Colors.red),
+                          onPressed: () => _deleteTransaction(trx.id),
+                          tooltip: 'Hapus Transaksi',
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _navigateAndRefresh(),

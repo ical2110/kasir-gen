@@ -1,149 +1,135 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:kasir_gen/models/customer.dart';
-import 'package:kasir_gen/models/service.dart';
+import 'package:kasir_gen/models/transaction_item.dart';
 
-// Enum untuk status transaksi agar lebih aman dan terstruktur
-enum TransactionStatus { in_progress, completed, paid }
-
-// Helper untuk konversi string ke enum dan sebaliknya
-TransactionStatus statusFromString(String status) {
-  return TransactionStatus.values.firstWhere(
-    (e) => e.toString().split('.').last == status,
-    orElse: () => TransactionStatus.in_progress,
-  );
+enum TransactionStatus {
+  in_progress,
+  completed,
+  paid,
 }
 
-String statusToString(TransactionStatus status) {
-  return status.toString().split('.').last;
-}
-
-// Helper baru untuk menampilkan status dengan format yang lebih baik di UI
 String statusToDisplayString(TransactionStatus status) {
   switch (status) {
     case TransactionStatus.in_progress:
-      return 'In Progress';
+      return 'Dalam Proses';
     case TransactionStatus.completed:
-      return 'Completed';
+      return 'Selesai';
     case TransactionStatus.paid:
-      return 'Paid';
+      return 'Dibayar';
+    default:
+      return 'Tidak Diketahui';
   }
 }
 
 class Transaction {
   final String id;
   final String customerId;
-  final String serviceId;
-  final String priceId; // Tambahkan priceId
-  final TransactionStatus status;
-  final int quantity;
+  final List<TransactionItem> items;
   final double totalAmount;
+  final TransactionStatus status;
   final String? notes;
   final DateTime? createdAt;
+  final DateTime? completedAt;
   final DateTime? updatedAt;
-  final DateTime? completedAt; // Tambahkan field untuk waktu selesai
+  final String? transactionSource; // <-- Field baru ditambahkan di sini
 
-  // Opsional: Untuk menampung data lengkap customer dan service saat join query
+  // Data denormalisasi (tidak disimpan langsung, tapi bisa di-populate)
   final Customer? customer;
-  final Service? service;
 
   Transaction({
     required this.id,
     required this.customerId,
-    required this.serviceId,
-    required this.priceId,
-    required this.status,
-    required this.quantity,
+    required this.items,
     required this.totalAmount,
+    required this.status,
     this.notes,
     this.createdAt,
-    this.updatedAt,
     this.completedAt,
+    this.updatedAt,
+    this.transactionSource, // <-- Field baru ditambahkan di sini
     this.customer,
-    this.service,
   });
 
   factory Transaction.fromMap(Map<String, dynamic> map) {
+    // Konversi status dari String ke Enum
+    TransactionStatus status;
+    switch (map['status']) {
+      case 'in_progress':
+        status = TransactionStatus.in_progress;
+        break;
+      case 'completed':
+        status = TransactionStatus.completed;
+        break;
+      case 'paid':
+        status = TransactionStatus.paid;
+        break;
+      default:
+        status = TransactionStatus.in_progress; // Default
+    }
+
     return Transaction(
-      id: map['transaction_id']?.toString() ?? '',
-      customerId: map['customer_id']?.toString() ?? '',
-      serviceId: map['service_id']?.toString() ?? '',
-      priceId: map['price_id']?.toString() ?? '', // Ambil price_id dari map
-      status: statusFromString(map['status'] ?? 'pending'),
-      quantity: int.tryParse(map['quantity']?.toString() ?? '0') ?? 0,
-      totalAmount:
-          double.tryParse(map['total_amount']?.toString() ?? '0.0') ?? 0.0,
+      id: map['transaction_id'] ?? '',
+      customerId: map['customer_id'] ?? '',
+      items: (map['items'] as List<dynamic>?)
+              ?.map((item) => TransactionItem.fromMap(item))
+              .toList() ??
+          [],
+      totalAmount: (map['total_amount'] as num?)?.toDouble() ?? 0.0,
+      status: status,
       notes: map['transaction_notes'],
       createdAt: (map['created_at'] as Timestamp?)?.toDate(),
-      updatedAt: (map['updated_at'] as Timestamp?)?.toDate(),
       completedAt: (map['completed_at'] as Timestamp?)?.toDate(),
-      // Cek apakah data denormalisasi (customer_name, service_name) ada di map.
-      // Jika ada, buat objek Customer/Service sederhana hanya dengan nama.
-      // Ini berguna untuk tampilan di UI tanpa perlu query tambahan.
-      customer: map.containsKey('customer_name') && map['customer_name'] != null
-          ? Customer(
-              id: map['customer_id'] ?? '',
-              name: map['customer_name'],
-              phone: '')
-          : null,
-      service: map.containsKey('service_name') && map['service_name'] != null
-          ? Service.fromMap({'service_name': map['service_name']})
-          : null,
+      updatedAt: (map['updated_at'] as Timestamp?)?.toDate(),
+      transactionSource: map['transaction_source'], // <-- Ambil data dari map
+      // Customer di-populate secara terpisah
     );
   }
 
   Map<String, dynamic> toMap({bool includeId = true}) {
     final map = {
+      if (includeId) 'transaction_id': id,
       'customer_id': customerId,
-      'service_id': serviceId,
-      'price_id': priceId, // Kirim price_id ke API
-      'status': statusToString(status),
-      'quantity': quantity,
+      'items': items.map((item) => item.toMap()).toList(),
       'total_amount': totalAmount,
+      'status': status.name, // Konversi enum ke string
       'transaction_notes': notes,
-      // Gunakan Timestamp untuk konsistensi di Firestore
       'created_at': createdAt != null
           ? Timestamp.fromDate(createdAt!)
           : FieldValue.serverTimestamp(),
-      'updated_at': FieldValue.serverTimestamp(),
       'completed_at':
           completedAt != null ? Timestamp.fromDate(completedAt!) : null,
+      'updated_at': FieldValue.serverTimestamp(),
+      'transaction_source': transactionSource, // <-- Tambahkan data ke map
     };
-    if (includeId) {
-      map['transaction_id'] = id;
-    }
     return map;
   }
 
-  // Metode copyWith untuk membuat salinan objek dengan beberapa field yang diubah
   Transaction copyWith({
     String? id,
     String? customerId,
-    String? serviceId,
-    String? priceId,
-    TransactionStatus? status,
-    int? quantity,
+    List<TransactionItem>? items,
     double? totalAmount,
+    TransactionStatus? status,
     String? notes,
-    Customer? customer,
-    DateTime? createdAt, // Tambahkan parameter yang hilang
+    DateTime? createdAt,
+    DateTime? completedAt,
     DateTime? updatedAt,
-    DateTime? completedAt, // Tambahkan parameter baru
-    Service? service,
+    String? transactionSource, // <-- Field baru ditambahkan di sini
+    Customer? customer,
   }) {
     return Transaction(
       id: id ?? this.id,
       customerId: customerId ?? this.customerId,
-      serviceId: serviceId ?? this.serviceId,
-      priceId: priceId ?? this.priceId,
-      status: status ?? this.status,
-      quantity: quantity ?? this.quantity,
+      items: items ?? this.items,
       totalAmount: totalAmount ?? this.totalAmount,
+      status: status ?? this.status,
       notes: notes ?? this.notes,
       createdAt: createdAt ?? this.createdAt,
-      updatedAt: updatedAt ?? this.updatedAt,
       completedAt: completedAt ?? this.completedAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      transactionSource: transactionSource ??
+          this.transactionSource, // <-- Field baru ditambahkan di sini
       customer: customer ?? this.customer,
-      service: service ?? this.service,
     );
   }
 }

@@ -87,10 +87,10 @@ class PrintingService {
         "Pelanggan:", transaction.customer?.name ?? '-', 1);
     _bluetooth.printCustom("--------------------------------", 1, 1);
 
-    _bluetooth.printLeftRight(
-        "${transaction.service?.name ?? 'Layanan'} (x${transaction.quantity})",
-        currencyFormatter.format(transaction.totalAmount),
-        1);
+    for (var item in transaction.items) {
+      _bluetooth.printLeftRight("${item.serviceName} (x${item.quantity})",
+          currencyFormatter.format(item.subtotal), 1);
+    }
     _bluetooth.printCustom("--------------------------------", 1, 1);
     _bluetooth.printLeftRight(
         "TOTAL:", currencyFormatter.format(transaction.totalAmount), 2);

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:cloud_firestore/cloud_firestore.dart' hide Transaction;
+import 'package:kasir_gen/models/transaction_item.dart';
 import 'package:kasir_gen/models/service_price.dart';
 import '../models/customer.dart';
 import '../models/service.dart';
@@ -15,6 +17,26 @@ class TransactionFormScreen extends StatefulWidget {
   State<TransactionFormScreen> createState() => _TransactionFormScreenState();
 }
 
+// Helper class untuk mengelola state setiap baris item transaksi
+class TransactionItemController {
+  Service? selectedService;
+  ServicePrice? selectedPrice;
+  final TextEditingController quantityController;
+
+  TransactionItemController()
+      : quantityController = TextEditingController(text: '1');
+
+  void dispose() {
+    quantityController.dispose();
+  }
+
+  // Validasi sederhana untuk satu baris
+  bool get isValid =>
+      selectedService != null &&
+      selectedPrice != null &&
+      (int.tryParse(quantityController.text) ?? 0) > 0;
+}
+
 class _TransactionFormScreenState extends State<TransactionFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final ApiService _apiService = ApiService();
@@ -25,10 +47,9 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
 
   // State Form
   Customer? _selectedCustomer;
-  Service? _selectedService;
-  ServicePrice? _selectedPrice;
-  final _quantityController = TextEditingController(text: '1');
+  String? _selectedSource; // State untuk Drop Point
   final _notesController = TextEditingController();
+  List<TransactionItemController> _itemControllers = [];
   double _totalAmount = 0.0;
 
   bool _isLoading = true; // Loading untuk data awal
@@ -38,13 +59,17 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
   void initState() {
     super.initState();
     _loadInitialData();
-    _quantityController.addListener(_calculateTotal);
+    _selectedSource = 'Workshop'; // Nilai default
+    // Tambahkan satu baris item secara default
+    _addTransactionItem();
   }
 
   @override
   void dispose() {
-    _quantityController.dispose();
     _notesController.dispose();
+    for (var controller in _itemControllers) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
@@ -68,53 +93,71 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
         _services = services;
         _isLoading = false;
       });
-
-      // 2. Setelah state di atas diatur, baru jalankan logika untuk mode edit.
-      // if (widget.transaction != null) {
-      //   _initializeEditMode();
-      // }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Gagal memuat data: $e')),
         );
-        Navigator.pop(context);
+        if (Navigator.canPop(context)) {
+          Navigator.pop(context);
+        }
       }
     }
   }
 
-  // Fungsi terpusat untuk menangani perubahan pada dropdown layanan
-  void _onServiceChanged(Service? newService) {
+  void _addTransactionItem() {
     setState(() {
-      _selectedService = newService;
-      _selectedPrice = null; // Reset harga saat layanan berubah
+      final newItemController = TransactionItemController();
+      newItemController.quantityController.addListener(_calculateTotal);
+      _itemControllers.add(newItemController);
+    });
+  }
 
-      if (newService != null && newService.prices.isNotEmpty) {
-        // Jika tidak ditemukan atau bukan mode edit, pilih harga pertama sebagai default
-        _selectedPrice = newService.prices.first;
-      }
-      _calculateTotal(); // Hitung ulang total setiap kali layanan atau harga berubah
+  void _removeTransactionItem(int index) {
+    setState(() {
+      _itemControllers[index].dispose();
+      _itemControllers.removeAt(index);
+      _calculateTotal();
     });
   }
 
   void _calculateTotal() {
-    final quantity = int.tryParse(_quantityController.text) ?? 0;
-    final price = _selectedPrice?.price ?? 0.0;
+    double currentTotal = 0.0;
+    for (var controller in _itemControllers) {
+      final quantity = int.tryParse(controller.quantityController.text) ?? 0;
+      final price = controller.selectedPrice?.price ?? 0.0;
+      currentTotal += quantity * price;
+    }
     setState(() {
-      _totalAmount = quantity * price;
+      _totalAmount = currentTotal;
     });
   }
 
   Future<void> _saveTransaction() async {
-    if (!_formKey.currentState!.validate()) {
+    if (!_formKey.currentState!.validate() || _itemControllers.isEmpty) {
       return;
     }
-    if (_selectedCustomer == null ||
-        _selectedService == null ||
-        _selectedPrice == null) {
+
+    if (_selectedCustomer == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pelanggan harus dipilih')),
+      );
+      return;
+    }
+
+    if (_selectedSource == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Drop point harus dipilih')),
+      );
+      return;
+    }
+
+    // Validasi setiap item
+    if (_itemControllers.any((controller) => !controller.isValid)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('Pelanggan, Layanan, dan Harga harus dipilih')),
+            content: Text(
+                'Pastikan semua layanan, harga, dan kuantitas terisi dengan benar.')),
       );
       return;
     }
@@ -122,18 +165,31 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
     setState(() => _isSaving = true);
 
     try {
+      // Buat daftar TransactionItem dari controllers
+      final List<TransactionItem> transactionItems =
+          _itemControllers.map((controller) {
+        final quantity = int.parse(controller.quantityController.text);
+        final price = controller.selectedPrice!.price;
+        return TransactionItem(
+          serviceId: controller.selectedService!.id,
+          serviceName: controller.selectedService!.name,
+          priceId: controller.selectedPrice!.priceId,
+          priceNotes: controller.selectedPrice!.notes,
+          price: price,
+          quantity: quantity,
+          subtotal: quantity * price,
+        );
+      }).toList();
+
       final transactionData = Transaction(
         id: '', // ID akan dibuat oleh backend
         customerId: _selectedCustomer!.id,
-        serviceId: _selectedService!.id,
-        priceId: _selectedPrice!.priceId, // Sertakan priceId saat menyimpan
-        status:
-            TransactionStatus.in_progress, // Selalu in_progress untuk data baru
-        quantity: int.parse(_quantityController.text),
+        status: TransactionStatus.in_progress,
         totalAmount: _totalAmount,
+        items: transactionItems,
         notes: _notesController.text,
+        transactionSource: _selectedSource,
         customer: _selectedCustomer, // Sertakan objek customer lengkap
-        service: _selectedService, // Sertakan objek service lengkap
       );
 
       await _apiService.addTransaction(transactionData);
@@ -187,67 +243,42 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Dropdown Layanan
-                  DropdownButtonFormField<Service>(
-                    value: _selectedService,
-                    hint: const Text('Pilih Layanan'),
-                    items: _services.map((service) {
-                      return DropdownMenuItem<Service>(
-                        value: service,
-                        child: Text(service.name),
-                      );
-                    }).toList(),
+                  // Dropdown Drop Point
+                  DropdownButtonFormField<String>(
+                    value: _selectedSource,
+                    items: ['Workshop', 'Dibarbers', 'Antar-jemput']
+                        .map((source) => DropdownMenuItem<String>(
+                              value: source,
+                              child: Text(source),
+                            ))
+                        .toList(),
+                    hint: const Text('Pilih Drop Point'),
                     onChanged: (value) {
-                      _onServiceChanged(value);
+                      setState(() => _selectedSource = value);
                     },
                     validator: (value) =>
-                        value == null ? 'Layanan wajib dipilih' : null,
+                        value == null ? 'Drop point wajib dipilih' : null,
                     isExpanded: true,
+                    decoration: const InputDecoration(labelText: 'Drop Point'),
                   ),
                   const SizedBox(height: 16),
 
-                  // Dropdown Harga (jika layanan punya > 1 harga)
-                  if (_selectedService != null &&
-                      _selectedService!.prices.length > 1)
-                    DropdownButtonFormField<ServicePrice>(
-                      value: _selectedPrice,
-                      hint: const Text('Pilih Varian Harga'),
-                      items: _selectedService!.prices.map((price) {
-                        return DropdownMenuItem<ServicePrice>(
-                          value: price,
-                          child: Text(price.notes ?? 'Rp ${price.price}'),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedPrice = value;
-                          _calculateTotal();
-                        });
-                      },
-                      validator: (value) =>
-                          value == null ? 'Harga wajib dipilih' : null,
-                      isExpanded: true,
-                    ),
-                  if (_selectedService != null &&
-                      _selectedService!.prices.length > 1)
-                    const SizedBox(height: 16),
+                  // Daftar Item Layanan
+                  ..._itemControllers.asMap().entries.map((entry) {
+                    int index = entry.key;
+                    TransactionItemController controller = entry.value;
+                    return _buildTransactionItemRow(index, controller);
+                  }).toList(),
 
-                  // Kuantitas
-                  TextFormField(
-                    controller: _quantityController,
-                    decoration: const InputDecoration(labelText: 'Kuantitas'),
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    validator: (value) {
-                      if (value == null || value.isEmpty)
-                        return 'Kuantitas wajib diisi';
-                      if (int.tryParse(value) == null ||
-                          int.parse(value) <= 0) {
-                        return 'Masukkan angka yang valid';
-                      }
-                      return null;
-                    },
+                  const SizedBox(height: 16),
+
+                  // Tombol Tambah Layanan
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.add),
+                    label: const Text('Tambah Layanan'),
+                    onPressed: _addTransactionItem,
                   ),
+
                   const SizedBox(height: 16),
 
                   // Catatan
@@ -281,6 +312,95 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
                 ],
               ),
             ),
+    );
+  }
+
+  Widget _buildTransactionItemRow(
+      int index, TransactionItemController controller) {
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Layanan #${index + 1}',
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                if (_itemControllers.length > 1)
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, color: Colors.red),
+                    onPressed: () => _removeTransactionItem(index),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+              ],
+            ),
+            const Divider(),
+            DropdownButtonFormField<Service>(
+              value: controller.selectedService,
+              hint: const Text('Pilih Layanan'),
+              items: _services.map((service) {
+                return DropdownMenuItem<Service>(
+                    value: service, child: Text(service.name));
+              }).toList(),
+              onChanged: (value) {
+                setState(() {
+                  controller.selectedService = value;
+                  controller.selectedPrice = null; // Reset harga
+                  if (value != null && value.prices.isNotEmpty) {
+                    controller.selectedPrice = value.prices.first;
+                  }
+                  _calculateTotal();
+                });
+              },
+              validator: (v) => v == null ? 'Wajib' : null,
+              isExpanded: true,
+            ),
+            const SizedBox(height: 12),
+            if (controller.selectedService != null)
+              Row(
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: DropdownButtonFormField<ServicePrice>(
+                      value: controller.selectedPrice,
+                      hint: const Text('Harga'),
+                      items: controller.selectedService!.prices.map((price) {
+                        return DropdownMenuItem<ServicePrice>(
+                            value: price,
+                            child: Text(price.notes ?? 'Rp ${price.price}'));
+                      }).toList(),
+                      onChanged: (value) {
+                        setState(() {
+                          controller.selectedPrice = value;
+                          _calculateTotal();
+                        });
+                      },
+                      validator: (v) => v == null ? 'Wajib' : null,
+                      isExpanded: true,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    flex: 1,
+                    child: TextFormField(
+                        controller: controller.quantityController,
+                        decoration: const InputDecoration(labelText: 'Qty'),
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly
+                        ],
+                        validator: (v) => (int.tryParse(v ?? '') ?? 0) <= 0
+                            ? 'Qty > 0'
+                            : null),
+                  ),
+                ],
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

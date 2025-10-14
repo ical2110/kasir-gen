@@ -14,7 +14,7 @@ class ApiService {
     try {
       final snapshot = await _db.collection('customers').get();
       return snapshot.docs.map((doc) {
-        final data = doc.data();
+        final data = doc.data() as Map<String, dynamic>;
         data['customer_id'] = doc.id; // Tambahkan ID dokumen ke data
         return Customer.fromMap(data);
       }).toList();
@@ -63,7 +63,7 @@ class ApiService {
     try {
       final snapshot = await _db.collection('services').get();
       return snapshot.docs.map((doc) {
-        final data = doc.data();
+        final data = doc.data() as Map<String, dynamic>;
         data['service_id'] = doc.id;
         return Service.fromMap(data);
       }).toList();
@@ -115,20 +115,83 @@ class ApiService {
   // TRANSACTION API
   //============================================================================
 
-  Future<List<Transaction>> getTransactions() async {
+  Future<List<Transaction>> getTransactions({
+    int? year,
+    int? month,
+    List<TransactionStatus>? statuses,
+  }) async {
     try {
-      // Mengambil transaksi dengan data customer dan service yang sudah didenormalisasi.
-      // Ini jauh lebih efisien karena hanya memerlukan satu panggilan ke database.
-      final transactionSnapshot = await _db.collection('transactions').get();
+      Query query = _db.collection('transactions');
+
+      // Jika tahun dan bulan diberikan, tambahkan filter rentang waktu
+      if (year != null && month != null) {
+        final DateTime startDate = DateTime(year, month, 1);
+        // Akhir bulan adalah awal dari bulan berikutnya
+        final DateTime endDate = DateTime(year, month + 1, 1);
+
+        // Saat menggunakan filter rentang, orderBy pertama harus pada field yang sama.
+        query = query
+            .where('created_at',
+                isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
+            .where('created_at', isLessThan: Timestamp.fromDate(endDate));
+        // Tidak perlu orderBy di sini jika akan diurutkan di client
+      } else if (statuses != null && statuses.isNotEmpty) {
+        // Jika ada filter status, gunakan itu.
+        // Firestore 'in' query supports up to 10 elements.
+        // For 'in_progress' and 'completed', this is fine.
+        query = query.where('status',
+            whereIn: statuses.map((s) => s.name).toList());
+      } else {
+        // Jika tidak ada filter, cukup urutkan berdasarkan tanggal.
+        // Ini adalah kasus "ambil semua" untuk ekspor.
+        // Untuk memastikan semua data terambil, kita filter berdasarkan semua kemungkinan status.
+        query = query.where('status', whereIn: [
+          TransactionStatus.in_progress.name,
+          TransactionStatus.completed.name,
+          TransactionStatus.paid.name
+        ]);
+      }
+
+      final transactionSnapshot = await query.get();
       final transactions = transactionSnapshot.docs.map((doc) {
-        final trxData = doc.data();
+        final trxData = doc.data() as Map<String, dynamic>;
         trxData['transaction_id'] = doc.id;
-        // Asumsi model Transaction.fromMap dapat menangani data denormalisasi
-        // yang mungkin sudah ada di dalam trxData.
         return Transaction.fromMap(trxData);
       }).toList();
 
-      return transactions;
+      // Jika tidak ada transaksi, kembalikan list kosong
+      if (transactions.isEmpty) {
+        return [];
+      }
+
+      // --- POPULATE CUSTOMER DATA ---
+      // 1. Kumpulkan semua customerId unik dari transaksi
+      final customerIds =
+          transactions.map((trx) => trx.customerId).toSet().toList();
+
+      // 2. Ambil semua data customer yang relevan dalam satu query
+      final customerSnapshot = await _db
+          .collection('customers')
+          .where(FieldPath.documentId, whereIn: customerIds)
+          .get();
+
+      // 3. Buat map untuk pencarian cepat: customerId -> Customer object
+      final customerMap = {
+        for (var doc in customerSnapshot.docs)
+          doc.id: Customer.fromMap(
+              (doc.data() as Map<String, dynamic>)..['customer_id'] = doc.id)
+      };
+
+      // 4. Gabungkan data customer ke dalam setiap transaksi
+      final populatedTransactions = transactions.map((trx) {
+        return trx.copyWith(customer: customerMap[trx.customerId]);
+      }).toList();
+
+      // Selalu urutkan di sisi klien untuk konsistensi
+      populatedTransactions.sort((a, b) =>
+          (b.createdAt ?? DateTime(0)).compareTo(a.createdAt ?? DateTime(0)));
+
+      return populatedTransactions;
     } catch (e) {
       throw Exception('Gagal mengambil data transaksi: $e');
     }
@@ -140,7 +203,6 @@ class ApiService {
       final Map<String, dynamic> transactionData =
           transaction.toMap(includeId: false);
       transactionData['customer_name'] = transaction.customer?.name;
-      transactionData['service_name'] = transaction.service?.name;
 
       final docRef = await _db.collection('transactions').add(transactionData);
       return transaction.copyWith(id: docRef.id);
@@ -155,7 +217,6 @@ class ApiService {
       final Map<String, dynamic> transactionData =
           transaction.toMap(includeId: false);
       transactionData['customer_name'] = transaction.customer?.name;
-      transactionData['service_name'] = transaction.service?.name;
       await _db
           .collection('transactions')
           .doc(transaction.id)
@@ -198,6 +259,7 @@ class ApiService {
     - customer_id: "..." (Referensi ke /customers/{customerId})
     - service_id: "..." (Referensi ke /services/{serviceId})
     - price_id: "p1"
+    - transaction_source: "Workshop" // Baru: Workshop, Dibarbers, Antar-jemput
     - quantity: 2
     - total_amount: 30000
     - status: "in_progress"
