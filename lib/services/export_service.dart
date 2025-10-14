@@ -101,28 +101,28 @@ class ExportService {
 
       if (fileBytes != null) {
         // Gunakan file_saver untuk menyimpan file.
-        // Ini akan menangani izin dan membuat file terlihat di folder Downloads.
-        String? path = await FileSaver.instance.saveFile(
+        // Menggunakan saveAs untuk membuka dialog simpan dari sistem operasi.
+        // Ini lebih andal di Android modern dan memberi pengguna kontrol.
+        String? path = await FileSaver.instance.saveAs(
           name: fileName,
           bytes: Uint8List.fromList(fileBytes),
           ext: 'xlsx',
           mimeType: MimeType.microsoftExcel,
         );
 
-        if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('Ekspor berhasil! Tersimpan di folder Downloads.')),
-        );
+        // Jika path tidak null, berarti pengguna berhasil menyimpan file.
         if (path != null) {
           if (!context.mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Ekspor berhasil! Membuka file...')),
+            const SnackBar(
+                content: Text('Laporan berhasil diekspor dan disimpan.')),
           );
-          // Buka file setelah berhasil disimpan untuk konfirmasi
-          await OpenFile.open(path);
         } else {
-          throw Exception('File path tidak ditemukan setelah menyimpan.');
+          // Jika path null, berarti pengguna membatalkan proses penyimpanan.
+          if (!context.mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Proses ekspor dibatalkan.')),
+          );
         }
       }
     } catch (e) {
