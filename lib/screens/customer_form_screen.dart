@@ -117,7 +117,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
               ),
               TextFormField(
                 controller: _alamatController,
-                decoration: InputDecoration(labelText: 'Alamat (OpsionaRl)'),
+                decoration: InputDecoration(labelText: 'Alamat (Opsional)'),
                 keyboardType: TextInputType.streetAddress,
               ),
               SizedBox(height: 20),

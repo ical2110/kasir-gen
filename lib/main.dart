@@ -2,50 +2,78 @@ import 'package:flutter/material.dart';
 import 'screens/home_screen.dart'; // Import halaman utama yang baru
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
 
-void main() async {
-  // Pastikan Flutter binding sudah siap sebelum menjalankan kode async
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  runApp(const MyApp());
+}
 
-  // Inisialisasi data lokal untuk format tanggal (misal: 'id_ID')
+Future<void> _initializeServices() async {
   await initializeDateFormatting('id_ID', null);
-
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
-  );
+  ).timeout(const Duration(seconds: 15));
 
-  runApp(const MyApp());
+  if (FirebaseAuth.instance.currentUser != null) {
+    return;
+  }
+
+  try {
+    await FirebaseAuth.instance
+        .signInAnonymously()
+        .timeout(const Duration(seconds: 15));
+  } on FirebaseAuthException catch (e) {
+    if (e.code == 'admin-restricted-operation' ||
+        e.code == 'operation-not-allowed') {
+      debugPrint(
+        'Anonymous auth is not enabled/restricted. Continuing without sign-in.',
+      );
+      return;
+    }
+    rethrow;
+  }
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
+  static final Future<void> _initFuture = _initializeServices();
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Kasir Gen',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const HomeScreen(), // Set HomeScreen sebagai halaman awal
+      home: FutureBuilder<void>(
+        future: _initFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            );
+          }
+
+          if (snapshot.hasError) {
+            return Scaffold(
+              body: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Text(
+                    'Gagal inisialisasi aplikasi:\n${snapshot.error}',
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+            );
+          }
+
+          return const HomeScreen();
+        },
+      ),
     );
   }
 }
