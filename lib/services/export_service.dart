@@ -1,10 +1,8 @@
-import 'dart:io';
 import 'dart:typed_data';
 import 'package:excel/excel.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:kasir_gen/models/transaction.dart';
-import 'package:open_file/open_file.dart';
 import 'package:file_saver/file_saver.dart';
 
 class ExportService {

@@ -1,16 +1,22 @@
-# kasir_gen
+# Kasir Gen
 
-A new Flutter project.
+Aplikasi kasir Flutter untuk layanan laundry, dengan Firebase Authentication dan Cloud Firestore.
 
-## Getting Started
+## Platform yang didukung
 
-This project is a starting point for a Flutter application.
+Android, iOS, Windows, dan web. macOS serta Linux sengaja menampilkan pesan tidak didukung karena Firebase untuk kedua platform belum dikonfigurasi pada proyek ini.
 
-A few resources to get you started if this is your first Flutter project:
+## Setup Firebase sebelum rilis
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+1. Di Firebase Console, aktifkan **Authentication > Sign-in method > Email/Password**.
+2. Data baru diberi field `owner_id` dari UID pengguna yang masuk. Karena itu, setiap akun hanya bisa membaca dan menulis datanya sendiri.
+3. Dokumen lama tanpa `owner_id` tidak dapat diakses setelah rules baru dipublikasikan. Migrasikan dokumen lama melalui Admin SDK/Cloud Functions dengan menetapkan UID pemilik yang benar.
+4. Login ke Firebase CLI lalu jalankan `firebase deploy --only firestore` untuk menerapkan [rules](firestore.rules) dan indeks.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Jangan aktifkan Anonymous Authentication untuk aplikasi produksi ini.
+
+## Android release
+
+Konfigurasi Gradle menggunakan Groovy saja; file Kotlin DSL duplikat sudah dihapus. Sebelum membuat APK/AAB rilis, salin `android/key.properties.example` menjadi `android/key.properties`, isi lokasi keystore serta kredensialnya, lalu simpan file tersebut di luar Git.
+
+Application ID Android saat ini tetap `com.example.kasir_gen` karena itulah ID yang terdaftar pada `google-services.json`. Jika ingin menggantinya untuk Play Store, daftarkan aplikasi Android baru pada Firebase dan jalankan ulang konfigurasi FlutterFire terlebih dahulu.

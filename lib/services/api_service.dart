@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart' hide Transaction;
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:kasir_gen/models/customer.dart';
 import 'package:kasir_gen/models/service.dart';
 import 'package:kasir_gen/models/transaction.dart';
@@ -6,18 +7,32 @@ import 'package:kasir_gen/models/transaction.dart';
 class ApiService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
+  String get _ownerId {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) {
+      throw StateError('Anda harus masuk sebelum mengakses data.');
+    }
+    return uid;
+  }
+
   //============================================================================
   // CUSTOMER API
   //============================================================================
 
   Future<List<Customer>> getCustomers() async {
     try {
-      final snapshot = await _db.collection('customers').get();
-      return snapshot.docs.map((doc) {
+      final snapshot = await _db
+          .collection('customers')
+          .where('owner_id', isEqualTo: _ownerId)
+          .get();
+      final customers = snapshot.docs.map((doc) {
         final data = doc.data() as Map<String, dynamic>;
         data['customer_id'] = doc.id; // Tambahkan ID dokumen ke data
         return Customer.fromMap(data);
       }).toList();
+      customers
+          .sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+      return customers;
     } catch (e) {
       throw Exception('Gagal mengambil data pelanggan: $e');
     }
@@ -26,9 +41,8 @@ class ApiService {
   Future<Customer> addCustomer(Customer customer) async {
     try {
       // Firestore akan generate ID secara otomatis
-      final docRef = await _db
-          .collection('customers')
-          .add(customer.toMap(includeId: false));
+      final data = customer.toMap(includeId: false)..['owner_id'] = _ownerId;
+      final docRef = await _db.collection('customers').add(data);
       // Mengembalikan customer dengan ID yang sudah dibuat menggunakan copyWith
       return customer.copyWith(id: docRef.id);
     } catch (e) {
@@ -38,10 +52,10 @@ class ApiService {
 
   Future<void> updateCustomer(Customer customer) async {
     try {
-      await _db
-          .collection('customers')
-          .doc(customer.id)
-          .update(customer.toMap(includeId: false));
+      await _db.collection('customers').doc(customer.id).update(customer.toMap(
+            includeId: false,
+            includeCreatedAt: false,
+          )..['owner_id'] = _ownerId);
     } catch (e) {
       throw Exception('Gagal memperbarui pelanggan: $e');
     }
@@ -61,12 +75,18 @@ class ApiService {
 
   Future<List<Service>> getServices() async {
     try {
-      final snapshot = await _db.collection('services').get();
-      return snapshot.docs.map((doc) {
+      final snapshot = await _db
+          .collection('services')
+          .where('owner_id', isEqualTo: _ownerId)
+          .get();
+      final services = snapshot.docs.map((doc) {
         final data = doc.data() as Map<String, dynamic>;
         data['service_id'] = doc.id;
         return Service.fromMap(data);
       }).toList();
+      services
+          .sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+      return services;
     } catch (e) {
       throw Exception('Gagal mengambil data layanan: $e');
     }
@@ -74,8 +94,8 @@ class ApiService {
 
   Future<Service> addService(Service service) async {
     try {
-      final docRef =
-          await _db.collection('services').add(service.toMap(includeId: false));
+      final data = service.toMap(includeId: false)..['owner_id'] = _ownerId;
+      final docRef = await _db.collection('services').add(data);
       // Membuat objek baru dengan ID yang dihasilkan.
       // Karena model Service tidak memiliki copyWith, kita buat manual.
       return Service(
@@ -92,10 +112,10 @@ class ApiService {
 
   Future<void> updateService(Service service) async {
     try {
-      await _db
-          .collection('services')
-          .doc(service.id)
-          .update(service.toMap(includeId: false));
+      await _db.collection('services').doc(service.id).update(service.toMap(
+            includeId: false,
+            includeCreatedAt: false,
+          )..['owner_id'] = _ownerId);
     } catch (e) {
       throw Exception('Gagal memperbarui layanan: $e');
     }
@@ -121,7 +141,8 @@ class ApiService {
     List<TransactionStatus>? statuses,
   }) async {
     try {
-      Query query = _db.collection('transactions');
+      Query query =
+          _db.collection('transactions').where('owner_id', isEqualTo: _ownerId);
 
       // Jika tahun dan bulan diberikan, tambahkan filter rentang waktu
       if (year != null && month != null) {
@@ -166,20 +187,37 @@ class ApiService {
 
       // --- POPULATE CUSTOMER DATA ---
       // 1. Kumpulkan semua customerId unik dari transaksi
-      final customerIds =
-          transactions.map((trx) => trx.customerId).toSet().toList();
+      final customerIds = transactions
+          .map((trx) => trx.customerId)
+          .where((id) => id.isNotEmpty)
+          .toSet()
+          .toList();
 
-      // 2. Ambil semua data customer yang relevan dalam satu query
-      final customerSnapshot = await _db
-          .collection('customers')
-          .where(FieldPath.documentId, whereIn: customerIds)
-          .get();
+      // Firestore limits `whereIn` to 10 values. Fetch customer documents in
+      // batches so a busy month cannot make the transaction list fail.
+      final customerSnapshots = await Future.wait([
+        for (var index = 0; index < customerIds.length; index += 10)
+          _db
+              .collection('customers')
+              .where('owner_id', isEqualTo: _ownerId)
+              .where(
+                FieldPath.documentId,
+                whereIn: customerIds.sublist(
+                  index,
+                  index + 10 > customerIds.length
+                      ? customerIds.length
+                      : index + 10,
+                ),
+              )
+              .get(),
+      ]);
 
       // 3. Buat map untuk pencarian cepat: customerId -> Customer object
       final customerMap = {
-        for (var doc in customerSnapshot.docs)
-          doc.id: Customer.fromMap(
-              (doc.data() as Map<String, dynamic>)..['customer_id'] = doc.id)
+        for (final snapshot in customerSnapshots)
+          for (final doc in snapshot.docs)
+            doc.id: Customer.fromMap(
+                (doc.data() as Map<String, dynamic>)..['customer_id'] = doc.id)
       };
 
       // 4. Gabungkan data customer ke dalam setiap transaksi
@@ -201,8 +239,9 @@ class ApiService {
     try {
       // Tambahkan data denormalisasi untuk pembacaan yang lebih efisien
       final Map<String, dynamic> transactionData =
-          transaction.toMap(includeId: false);
+          transaction.toMap(includeId: false, includeCreatedAt: false);
       transactionData['customer_name'] = transaction.customer?.name;
+      transactionData['owner_id'] = _ownerId;
 
       final docRef = await _db.collection('transactions').add(transactionData);
       return transaction.copyWith(id: docRef.id);
@@ -217,6 +256,7 @@ class ApiService {
       final Map<String, dynamic> transactionData =
           transaction.toMap(includeId: false);
       transactionData['customer_name'] = transaction.customer?.name;
+      transactionData['owner_id'] = _ownerId;
       await _db
           .collection('transactions')
           .doc(transaction.id)

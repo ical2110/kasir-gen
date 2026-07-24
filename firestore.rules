@@ -1,0 +1,42 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function ownsExistingDocument() {
+      return signedIn() && resource.data.owner_id == request.auth.uid;
+    }
+
+    function ownsNewDocument() {
+      return signedIn() && request.resource.data.owner_id == request.auth.uid;
+    }
+
+    function referencesOwnedCustomer() {
+      return exists(/databases/$(database)/documents/customers/$(request.resource.data.customer_id))
+          && get(/databases/$(database)/documents/customers/$(request.resource.data.customer_id)).data.owner_id == request.auth.uid;
+    }
+
+    match /customers/{customerId} {
+      allow create: if ownsNewDocument();
+      allow read, delete: if ownsExistingDocument();
+      allow update: if ownsExistingDocument() && ownsNewDocument();
+    }
+
+    match /services/{serviceId} {
+      allow create: if ownsNewDocument();
+      allow read, delete: if ownsExistingDocument();
+      allow update: if ownsExistingDocument() && ownsNewDocument();
+    }
+
+    match /transactions/{transactionId} {
+      allow create: if ownsNewDocument() && referencesOwnedCustomer();
+      allow read, delete: if ownsExistingDocument();
+      allow update: if ownsExistingDocument()
+          && ownsNewDocument()
+          && referencesOwnedCustomer();
+    }
+  }
+}

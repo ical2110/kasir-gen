@@ -7,8 +7,18 @@ import '../services/api_service.dart';
 // Helper class untuk mengelola controller di setiap baris harga
 class PriceControllers {
   final TextEditingController priceController;
+  final String priceId;
+  final String? notes;
+  final DateTime? createdAt;
 
-  PriceControllers() : priceController = TextEditingController();
+  PriceControllers({
+    required this.priceId,
+    ServicePrice? existingPrice,
+  })  : notes = existingPrice?.notes,
+        createdAt = existingPrice?.createdAt,
+        priceController = TextEditingController(
+          text: existingPrice?.price.toStringAsFixed(0) ?? '',
+        );
 
   void dispose() {
     priceController.dispose();
@@ -31,6 +41,7 @@ class _ServiceFormScreenState extends State<ServiceFormScreen> {
   late TextEditingController _nameController;
   late TextEditingController _descriptionController;
   final List<PriceControllers> _priceControllers = [];
+  int _nextPriceNumber = 0;
 
   bool _isLoading = false;
 
@@ -50,7 +61,7 @@ class _ServiceFormScreenState extends State<ServiceFormScreen> {
         _addPriceRow(); // Tambah satu baris kosong jika layanan yang diedit belum punya harga
       } else {
         for (var price in widget.service!.prices) {
-          _addPriceRow(price: price.price.toInt().toString());
+          _addPriceRow(existingPrice: price);
         }
       }
     }
@@ -66,13 +77,21 @@ class _ServiceFormScreenState extends State<ServiceFormScreen> {
     super.dispose();
   }
 
-  void _addPriceRow({String? price}) {
+  void _addPriceRow({ServicePrice? existingPrice}) {
     setState(() {
-      final controllers = PriceControllers();
-      controllers.priceController.text = price ?? '';
-      _priceControllers.add(controllers);
+      _priceControllers.add(
+        PriceControllers(
+          priceId: existingPrice?.priceId.isNotEmpty == true
+              ? existingPrice!.priceId
+              : _createPriceId(),
+          existingPrice: existingPrice,
+        ),
+      );
     });
   }
+
+  String _createPriceId() =>
+      'price_${DateTime.now().microsecondsSinceEpoch}_${_nextPriceNumber++}';
 
   void _removePriceRow(int index) {
     setState(() {
@@ -91,10 +110,13 @@ class _ServiceFormScreenState extends State<ServiceFormScreen> {
         // Buat daftar ServicePrice dari controllers
         final prices = _priceControllers.map((controllers) {
           return ServicePrice(
-            priceId: '', // ID dikelola backend
-            serviceId: '', // ID dikelola backend
-            notes: null, // Tidak ada lagi field catatan
+            // Harga disimpan sebagai array pada dokumen layanan, sehingga ID
+            // varian harus tetap unik dan stabil saat layanan diperbarui.
+            priceId: controllers.priceId,
+            serviceId: widget.service?.id ?? '',
+            notes: controllers.notes,
             price: double.tryParse(controllers.priceController.text) ?? 0.0,
+            createdAt: controllers.createdAt,
           );
         }).toList();
 

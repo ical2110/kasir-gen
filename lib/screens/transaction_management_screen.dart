@@ -36,10 +36,6 @@ class _TransactionManagementScreenState
         month: _selectedDate.month,
       );
       _transactionsFuture = future;
-
-      // Setelah future selesai, perbarui state _currentTransactions
-      // Ini memastikan data untuk ekspor selalu sinkron.
-      future.then((transactions) => _currentTransactions = transactions);
     });
   }
 
@@ -132,7 +128,7 @@ class _TransactionManagementScreenState
           // Widget untuk Filter Bulan
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            color: Colors.blue.withOpacity(0.1),
+            color: Colors.blue.withValues(alpha: 0.1),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -170,8 +166,8 @@ class _TransactionManagementScreenState
                       child: Text('Tidak ada transaksi pada bulan ini.'));
                 }
 
-                // Langsung gunakan data dari snapshot dan simpan ke state.
-                // Ini adalah sumber data tunggal untuk UI dan ekspor.
+                // Sinkronkan data saat ini dengan state untuk keperluan ekspor
+                _currentTransactions = snapshot.data!;
                 final transactions = snapshot.data!;
 
                 return ListView.builder(

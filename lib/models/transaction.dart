@@ -85,7 +85,10 @@ class Transaction {
     );
   }
 
-  Map<String, dynamic> toMap({bool includeId = true}) {
+  Map<String, dynamic> toMap({
+    bool includeId = true,
+    bool includeCreatedAt = true,
+  }) {
     final map = {
       if (includeId) 'transaction_id': id,
       'customer_id': customerId,
@@ -93,14 +96,16 @@ class Transaction {
       'total_amount': totalAmount,
       'status': status.name, // Konversi enum ke string
       'transaction_notes': notes,
-      'created_at': createdAt != null
-          ? Timestamp.fromDate(createdAt!)
-          : FieldValue.serverTimestamp(),
       'completed_at':
           completedAt != null ? Timestamp.fromDate(completedAt!) : null,
       'updated_at': FieldValue.serverTimestamp(),
       'transaction_source': transactionSource, // <-- Tambahkan data ke map
     };
+    if (includeCreatedAt) {
+      map['created_at'] = createdAt != null
+          ? Timestamp.fromDate(createdAt!)
+          : FieldValue.serverTimestamp();
+    }
     return map;
   }
 

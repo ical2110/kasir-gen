@@ -18,18 +18,22 @@ class Customer {
   });
 
   // Metode untuk mengkonversi objek Customer menjadi Map (untuk disimpan ke database)
-  Map<String, dynamic> toMap({bool includeId = true}) {
+  Map<String, dynamic> toMap({
+    bool includeId = true,
+    bool includeCreatedAt = true,
+  }) {
     final map = {
       // Gunakan nama kolom dari database Anda saat mengirim data ke API
       'full_name': name,
       'phone_number': phone,
       'alamat': alamat,
-      // Firestore akan secara otomatis mengkonversi DateTime ke Timestamp
-      'created_at': createdAt != null
-          ? Timestamp.fromDate(createdAt!)
-          : FieldValue.serverTimestamp(),
       'updated_at': FieldValue.serverTimestamp(),
     };
+    if (includeCreatedAt) {
+      map['created_at'] = createdAt != null
+          ? Timestamp.fromDate(createdAt!)
+          : FieldValue.serverTimestamp();
+    }
     if (includeId) {
       map['customer_id'] = id;
     }

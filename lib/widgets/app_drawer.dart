@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:kasir_gen/screens/service_management_screen.dart';
 import '../screens/customer_manajement_screen.dart';
@@ -68,6 +69,15 @@ class AppDrawer extends StatelessWidget {
                 MaterialPageRoute(
                     builder: (context) => const TransactionManagementScreen()),
               );
+            },
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.logout),
+            title: const Text('Keluar'),
+            onTap: () async {
+              Navigator.pop(context);
+              await FirebaseAuth.instance.signOut();
             },
           ),
         ],

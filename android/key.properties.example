@@ -1,0 +1,5 @@
+# Copy this file to android/key.properties and replace all values.
+storePassword=change-me
+keyPassword=change-me
+keyAlias=kasir_gen
+storeFile=/absolute/path/to/kasir-gen-release.jks

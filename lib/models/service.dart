@@ -36,20 +36,26 @@ class Service {
   }
 
   // Konversi dari objek Service ke Map (untuk dikirim sebagai JSON)
-  Map<String, dynamic> toMap({bool includeId = true}) {
+  Map<String, dynamic> toMap({
+    bool includeId = true,
+    bool includeCreatedAt = true,
+  }) {
     final map = {
       'service_name': name,
       'description': description,
       // Sertakan daftar harga, ubah setiap objek ServicePrice menjadi Map
       'prices': prices
-          .map((price) =>
-              price.toMap(includeId: includeId, includeServiceId: false))
+          // `service_id` belongs to the parent document, but each price needs
+          // its own stable ID for dropdown selection and transaction history.
+          .map((price) => price.toMap(includeId: true, includeServiceId: false))
           .toList(),
-      'created_at': createdAt != null
-          ? Timestamp.fromDate(createdAt!)
-          : FieldValue.serverTimestamp(),
       'updated_at': FieldValue.serverTimestamp(),
     };
+    if (includeCreatedAt) {
+      map['created_at'] = createdAt != null
+          ? Timestamp.fromDate(createdAt!)
+          : FieldValue.serverTimestamp();
+    }
     if (includeId) {
       map['service_id'] = id;
     }

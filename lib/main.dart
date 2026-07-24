@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'screens/home_screen.dart'; // Import halaman utama yang baru
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
+import 'screens/auth_gate.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -12,28 +13,18 @@ void main() {
 
 Future<void> _initializeServices() async {
   await initializeDateFormatting('id_ID', null);
+  if (!kIsWeb &&
+      defaultTargetPlatform != TargetPlatform.android &&
+      defaultTargetPlatform != TargetPlatform.iOS &&
+      defaultTargetPlatform != TargetPlatform.windows) {
+    throw UnsupportedError(
+      'Kasir Gen saat ini mendukung Android, iOS, Windows, dan web. '
+      'Firebase belum dikonfigurasi untuk platform ini.',
+    );
+  }
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   ).timeout(const Duration(seconds: 15));
-
-  if (FirebaseAuth.instance.currentUser != null) {
-    return;
-  }
-
-  try {
-    await FirebaseAuth.instance
-        .signInAnonymously()
-        .timeout(const Duration(seconds: 15));
-  } on FirebaseAuthException catch (e) {
-    if (e.code == 'admin-restricted-operation' ||
-        e.code == 'operation-not-allowed') {
-      debugPrint(
-        'Anonymous auth is not enabled/restricted. Continuing without sign-in.',
-      );
-      return;
-    }
-    rethrow;
-  }
 }
 
 class MyApp extends StatelessWidget {
@@ -71,7 +62,7 @@ class MyApp extends StatelessWidget {
             );
           }
 
-          return const HomeScreen();
+          return const AuthGate();
         },
       ),
     );

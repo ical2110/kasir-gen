@@ -16,8 +16,8 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final ApiService _apiService = ApiService();
-  final PrintingService _printingService = PrintingService();
-  final PdfInvoiceService _pdfService = PdfInvoiceService();
+  final PrintingService _printingService = getPrintingService();
+  final PdfInvoiceService _pdfService = getPdfInvoiceService();
   late Future<List<Transaction>> _transactionsFuture;
 
   @override
@@ -123,15 +123,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
         if (action == 'pdf') {
           try {
-            final file = await _pdfService.generate(updatedTransaction);
-            await _pdfService.openFile(file);
+            await _pdfService.generateAndOpen(updatedTransaction);
+            if (!mounted) return;
           } catch (e) {
+            if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(
               // Aman karena di dalam blok sinkron setelah dialog
               SnackBar(content: Text('Gagal membuat PDF: $e')),
             );
           }
         } else if (action == 'print') {
+          if (!mounted) return;
           await _printingService.printReceipt(context, updatedTransaction);
         }
       }
