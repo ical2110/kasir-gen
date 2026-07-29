@@ -203,6 +203,9 @@ class _TransactionManagementScreenState
                             Text(
                                 'Status: ${statusToDisplayString(trx.status)}'),
                             Text(
+                              'Dibuat oleh: ${trx.creatorName.isEmpty ? 'Nama belum tersedia' : trx.creatorName}',
+                            ),
+                            Text(
                                 'Total: ${currencyFormatter.format(trx.totalAmount)}'),
                             if (trx.createdAt != null)
                               Padding(

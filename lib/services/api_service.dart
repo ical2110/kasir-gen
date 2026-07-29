@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:kasir_gen/models/customer.dart';
 import 'package:kasir_gen/models/service.dart';
 import 'package:kasir_gen/models/transaction.dart';
+import 'role_service.dart';
 
 class ApiService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -186,6 +187,50 @@ class ApiService {
         return [];
       }
 
+      // Admin dapat melengkapi nama pembuat transaksi lama dari profil user.
+      // Transaksi baru sudah menyimpan created_by_name sebagai snapshot.
+      if (await RoleService.isAdmin()) {
+        final creatorIds = transactions
+            .where((transaction) =>
+                transaction.creatorName.isEmpty &&
+                transaction.creatorId.isNotEmpty)
+            .map((transaction) => transaction.creatorId)
+            .toSet()
+            .toList();
+        final creatorSnapshots = await Future.wait([
+          for (var index = 0; index < creatorIds.length; index += 10)
+            _db
+                .collection('users')
+                .where(
+                  FieldPath.documentId,
+                  whereIn: creatorIds.sublist(
+                    index,
+                    index + 10 > creatorIds.length
+                        ? creatorIds.length
+                        : index + 10,
+                  ),
+                )
+                .get(),
+        ]);
+        final creatorNames = {
+          for (final snapshot in creatorSnapshots)
+            for (final document in snapshot.docs)
+              document.id: (() {
+                final user = AppUser.fromDocument(document);
+                return user.name.isNotEmpty ? user.name : user.email;
+              })(),
+        };
+        transactions = transactions
+            .map(
+              (transaction) => transaction.creatorName.isNotEmpty
+                  ? transaction
+                  : transaction.copyWith(
+                      creatorName: creatorNames[transaction.creatorId] ?? '',
+                    ),
+            )
+            .toList();
+      }
+
       // --- POPULATE CUSTOMER DATA ---
       // 1. Kumpulkan semua customerId unik dari transaksi
       final customerIds = transactions
@@ -243,6 +288,9 @@ class ApiService {
           transaction.toMap(includeId: false, includeCreatedAt: false);
       transactionData['customer_name'] = transaction.customer?.name;
       transactionData['owner_id'] = _ownerId;
+      final currentUser = await RoleService.currentUser();
+      transactionData['created_by_name'] =
+          currentUser.name.isNotEmpty ? currentUser.name : currentUser.email;
       transactionData['created_at'] = FieldValue.serverTimestamp();
 
       final docRef = await _db.collection('transactions').add(transactionData);

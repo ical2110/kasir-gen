@@ -51,6 +51,8 @@ String statusToDisplayString(TransactionStatus status) {
 class Transaction {
   final String id;
   final String customerId;
+  final String creatorId;
+  final String creatorName;
   final List<TransactionItem> items;
   final double subtotalAmount;
   final DiscountType discountType;
@@ -73,6 +75,8 @@ class Transaction {
   Transaction({
     required this.id,
     required this.customerId,
+    this.creatorId = '',
+    this.creatorName = '',
     required this.items,
     required this.totalAmount,
     double? subtotalAmount,
@@ -115,6 +119,8 @@ class Transaction {
     return Transaction(
       id: map['transaction_id'] ?? '',
       customerId: map['customer_id'] ?? '',
+      creatorId: map['owner_id'] ?? '',
+      creatorName: map['created_by_name'] ?? '',
       items: (map['items'] as List<dynamic>?)
               ?.map((item) => TransactionItem.fromMap(item))
               .toList() ??
@@ -168,6 +174,8 @@ class Transaction {
   Transaction copyWith({
     String? id,
     String? customerId,
+    String? creatorId,
+    String? creatorName,
     List<TransactionItem>? items,
     double? subtotalAmount,
     DiscountType? discountType,
@@ -186,6 +194,8 @@ class Transaction {
     return Transaction(
       id: id ?? this.id,
       customerId: customerId ?? this.customerId,
+      creatorId: creatorId ?? this.creatorId,
+      creatorName: creatorName ?? this.creatorName,
       items: items ?? this.items,
       subtotalAmount: subtotalAmount ?? this.subtotalAmount,
       discountType: discountType ?? this.discountType,

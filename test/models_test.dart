@@ -106,6 +106,21 @@ void main() {
 
       expect(transaction.effectiveDate, completedAt);
     });
+
+    test('transaksi membaca nama pembuat dari snapshot', () {
+      final transaction = Transaction.fromMap({
+        'transaction_id': 'trx-creator',
+        'customer_id': 'c1',
+        'owner_id': 'user-1',
+        'created_by_name': 'Budi',
+        'total_amount': 25000,
+        'status': 'in_progress',
+        'items': <Map<String, dynamic>>[],
+      });
+
+      expect(transaction.creatorId, 'user-1');
+      expect(transaction.creatorName, 'Budi');
+    });
   });
 
   group('batas session', () {
