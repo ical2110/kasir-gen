@@ -63,6 +63,13 @@ Future<List<int>> buildInvoicePdf(Transaction transaction) async {
             headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
             headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),
           ),
+          if ((transaction.notes ?? '').trim().isNotEmpty) ...[
+            pw.SizedBox(height: 12),
+            pw.Text(
+              'Catatan transaksi: ${transaction.notes!.trim()}',
+              style: const pw.TextStyle(fontSize: 10),
+            ),
+          ],
           pw.SizedBox(height: 16),
           pw.Align(
             alignment: pw.Alignment.centerRight,
@@ -92,7 +99,7 @@ Future<List<int>> buildInvoicePdf(Transaction transaction) async {
                     pw.Padding(
                       padding: const pw.EdgeInsets.only(top: 6),
                       child: pw.Text(
-                        'Catatan: ${transaction.discountNotes}',
+                        'Catatan diskon: ${transaction.discountNotes}',
                         style: const pw.TextStyle(fontSize: 9),
                       ),
                     ),

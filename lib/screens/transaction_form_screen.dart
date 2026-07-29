@@ -298,6 +298,15 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
 
                   const SizedBox(height: 16),
 
+                  // Catatan transaksi ditulis sebelum pengaturan diskon.
+                  TextFormField(
+                    controller: _notesController,
+                    decoration:
+                        const InputDecoration(labelText: 'Catatan (Opsional)'),
+                    maxLines: 3,
+                  ),
+                  const SizedBox(height: 16),
+
                   DropdownButtonFormField<DiscountType>(
                     initialValue: _discountType,
                     decoration:
@@ -358,15 +367,6 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
                       ),
                     ),
                   ],
-                  const SizedBox(height: 16),
-
-                  // Catatan
-                  TextFormField(
-                    controller: _notesController,
-                    decoration:
-                        const InputDecoration(labelText: 'Catatan (Opsional)'),
-                    maxLines: 3,
-                  ),
                   const SizedBox(height: 24),
 
                   ListTile(

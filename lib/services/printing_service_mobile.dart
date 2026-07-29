@@ -93,6 +93,9 @@ class PrintingServiceImpl implements PrintingService {
       _bluetooth.printLeftRight("${item.serviceName} (x${item.quantity})",
           currencyFormatter.format(item.subtotal), 1);
     }
+    if ((transaction.notes ?? '').trim().isNotEmpty) {
+      _bluetooth.printCustom("Catatan: ${transaction.notes!.trim()}", 1, 0);
+    }
     _bluetooth.printCustom("--------------------------------", 1, 1);
     _bluetooth.printLeftRight(
         "Subtotal:", currencyFormatter.format(transaction.subtotalAmount), 1);
@@ -102,6 +105,10 @@ class PrintingServiceImpl implements PrintingService {
           : "Diskon:";
       _bluetooth.printLeftRight(discountLabel,
           "-${currencyFormatter.format(transaction.discountAmount)}", 1);
+      if ((transaction.discountNotes ?? '').trim().isNotEmpty) {
+        _bluetooth.printCustom(
+            "Catatan diskon: ${transaction.discountNotes!.trim()}", 1, 0);
+      }
     }
     _bluetooth.printLeftRight(
         "TOTAL:", currencyFormatter.format(transaction.totalAmount), 2);
