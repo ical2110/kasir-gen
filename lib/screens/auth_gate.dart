@@ -45,7 +45,12 @@ class _SessionGuardState extends State<_SessionGuard> {
   @override
   void initState() {
     super.initState();
-    _validation = SessionService.validate(widget.user);
+    _validation = SessionService.validate(widget.user)
+        .timeout(
+          const Duration(seconds: 5),
+          onTimeout: () => true,
+        )
+        .catchError((_) => true);
   }
 
   @override

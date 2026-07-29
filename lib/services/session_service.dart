@@ -24,23 +24,41 @@ class SessionService {
 
   static Future<bool> validate(User user, {DateTime? now}) async {
     final currentTime = now ?? DateTime.now();
-    final preferences = await SharedPreferences.getInstance();
-    final storedMilliseconds = preferences.getInt(_lastActivityKey);
-    final lastActivity = storedMilliseconds == null
-        ? null
-        : DateTime.fromMillisecondsSinceEpoch(storedMilliseconds);
     final signedInAt = user.metadata.lastSignInTime;
 
+    // Batas umur session tetap bisa diperiksa tanpa penyimpanan lokal.
     if (shouldExpire(
       now: currentTime,
-      lastActivity: lastActivity,
       signedInAt: signedInAt,
     )) {
       await signOut();
       return false;
     }
 
-    await recordActivity(force: true, now: currentTime);
+    try {
+      final preferences = await SharedPreferences.getInstance().timeout(
+        const Duration(seconds: 3),
+      );
+      final storedMilliseconds = preferences.getInt(_lastActivityKey);
+      final lastActivity = storedMilliseconds == null
+          ? null
+          : DateTime.fromMillisecondsSinceEpoch(storedMilliseconds);
+
+      if (shouldExpire(
+        now: currentTime,
+        lastActivity: lastActivity,
+        signedInAt: signedInAt,
+      )) {
+        await signOut();
+        return false;
+      }
+
+      await recordActivity(force: true, now: currentTime);
+    } catch (_) {
+      // Penyimpanan lokal dapat diblokir oleh browser/private mode. Session
+      // Firebase tetap boleh berjalan; hanya logout karena tidak aktif yang
+      // sementara tidak tersedia pada perangkat tersebut.
+    }
     return true;
   }
 
@@ -56,16 +74,28 @@ class SessionService {
     }
 
     _lastRecordedAt = currentTime;
-    final preferences = await SharedPreferences.getInstance();
-    await preferences.setInt(
-      _lastActivityKey,
-      currentTime.millisecondsSinceEpoch,
-    );
+    try {
+      final preferences = await SharedPreferences.getInstance().timeout(
+        const Duration(seconds: 3),
+      );
+      await preferences.setInt(
+        _lastActivityKey,
+        currentTime.millisecondsSinceEpoch,
+      );
+    } catch (_) {
+      // Jangan mengganggu penggunaan aplikasi jika storage lokal tidak ada.
+    }
   }
 
   static Future<void> signOut() async {
-    final preferences = await SharedPreferences.getInstance();
-    await preferences.remove(_lastActivityKey);
+    try {
+      final preferences = await SharedPreferences.getInstance().timeout(
+        const Duration(seconds: 3),
+      );
+      await preferences.remove(_lastActivityKey);
+    } catch (_) {
+      // Logout Firebase harus tetap dilanjutkan.
+    }
     _lastRecordedAt = null;
     await FirebaseAuth.instance.signOut();
   }
