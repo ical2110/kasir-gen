@@ -9,11 +9,17 @@ Android, iOS, Windows, dan web. macOS serta Linux sengaja menampilkan pesan tida
 ## Setup Firebase sebelum rilis
 
 1. Di Firebase Console, aktifkan **Authentication > Sign-in method > Email/Password**.
-2. Data baru diberi field `owner_id` dari UID pengguna yang masuk. Karena itu, setiap akun hanya bisa membaca dan menulis datanya sendiri.
-3. Dokumen lama tanpa `owner_id` tidak dapat diakses setelah rules baru dipublikasikan. Migrasikan dokumen lama melalui Admin SDK/Cloud Functions dengan menetapkan UID pemilik yang benar.
+2. Data pelanggan dan transaksi dibaca bersama oleh semua akun yang sudah disetujui. Data baru tetap diberi `owner_id` sebagai jejak pembuat.
+3. Akun yang belum disetujui hanya dapat membaca profil akunnya sendiri.
 4. Login ke Firebase CLI lalu jalankan `firebase deploy --only firestore` untuk menerapkan [rules](firestore.rules) dan indeks.
 
 Jangan aktifkan Anonymous Authentication untuk aplikasi produksi ini.
+
+## Role pengguna
+
+Akun baru dibuat sebagai `cashier` dengan status menunggu. Admin menyetujuinya melalui menu **Verifikasi Akun**. Setelah disetujui, kasir dapat membaca data usaha yang sudah ada serta menambah pelanggan dan transaksi. Hanya `admin` yang dapat mengubah atau menghapus pelanggan, layanan, dan transaksi.
+
+Untuk membuat admin pertama: buat akun dari aplikasi, buka Firestore Console, lalu ubah dokumen `users/{UID}` akun tersebut menjadi `role: "admin"`. Firebase Console melewati Firestore Rules. Jangan pernah menyediakan pilihan role admin di layar pendaftaran.
 
 ## Android release
 

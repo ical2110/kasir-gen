@@ -1,42 +1,42 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    function signedIn() {
-      return request.auth != null;
+    function signedIn() { return request.auth != null; }
+    function profile() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
+    function role() { return profile().role; }
+    function approved() {
+      return signedIn()
+        && (role() == 'admin' || !('approved' in profile()) || profile().approved == true);
+    }
+    function admin() { return signedIn() && role() == 'admin'; }
+    function cashier() { return approved() && role() == 'cashier'; }
+    function ownsExisting() { return signedIn() && resource.data.owner_id == request.auth.uid; }
+    function ownsNew() { return signedIn() && request.resource.data.owner_id == request.auth.uid; }
+    function customerExists() {
+      return exists(/databases/$(database)/documents/customers/$(request.resource.data.customer_id));
     }
 
-    function ownsExistingDocument() {
-      return signedIn() && resource.data.owner_id == request.auth.uid;
+    match /users/{userId} {
+      allow create: if signedIn()
+        && userId == request.auth.uid
+        && request.resource.data.role == 'cashier'
+        && request.resource.data.approved == false;
+      allow read: if signedIn() && (userId == request.auth.uid || admin());
+      allow update, delete: if admin();
     }
-
-    function ownsNewDocument() {
-      return signedIn() && request.resource.data.owner_id == request.auth.uid;
+    match /customers/{id} {
+      allow read: if approved();
+      allow create: if admin() || (cashier() && ownsNew());
+      allow update, delete: if admin();
     }
-
-    function referencesOwnedCustomer() {
-      return exists(/databases/$(database)/documents/customers/$(request.resource.data.customer_id))
-          && get(/databases/$(database)/documents/customers/$(request.resource.data.customer_id)).data.owner_id == request.auth.uid;
+    match /services/{id} {
+      allow read: if approved();
+      allow write: if admin();
     }
-
-    match /customers/{customerId} {
-      allow create: if ownsNewDocument();
-      allow read, delete: if ownsExistingDocument();
-      allow update: if ownsExistingDocument() && ownsNewDocument();
-    }
-
-    match /services/{serviceId} {
-      allow create: if ownsNewDocument();
-      allow read, delete: if ownsExistingDocument();
-      allow update: if ownsExistingDocument() && ownsNewDocument();
-    }
-
-    match /transactions/{transactionId} {
-      allow create: if ownsNewDocument() && referencesOwnedCustomer();
-      allow read, delete: if ownsExistingDocument();
-      allow update: if ownsExistingDocument()
-          && ownsNewDocument()
-          && referencesOwnedCustomer();
+    match /transactions/{id} {
+      allow read: if approved();
+      allow create: if admin() || (cashier() && ownsNew() && customerExists());
+      allow update, delete: if admin();
     }
   }
 }

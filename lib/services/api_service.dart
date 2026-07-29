@@ -21,12 +21,10 @@ class ApiService {
 
   Future<List<Customer>> getCustomers() async {
     try {
-      final snapshot = await _db
-          .collection('customers')
-          .where('owner_id', isEqualTo: _ownerId)
-          .get();
+      Query<Map<String, dynamic>> query = _db.collection('customers');
+      final snapshot = await query.get();
       final customers = snapshot.docs.map((doc) {
-        final data = doc.data() as Map<String, dynamic>;
+        final data = doc.data();
         data['customer_id'] = doc.id; // Tambahkan ID dokumen ke data
         return Customer.fromMap(data);
       }).toList();
@@ -75,12 +73,9 @@ class ApiService {
 
   Future<List<Service>> getServices() async {
     try {
-      final snapshot = await _db
-          .collection('services')
-          .where('owner_id', isEqualTo: _ownerId)
-          .get();
+      final snapshot = await _db.collection('services').get();
       final services = snapshot.docs.map((doc) {
-        final data = doc.data() as Map<String, dynamic>;
+        final data = doc.data();
         data['service_id'] = doc.id;
         return Service.fromMap(data);
       }).toList();
@@ -141,8 +136,7 @@ class ApiService {
     List<TransactionStatus>? statuses,
   }) async {
     try {
-      Query query =
-          _db.collection('transactions').where('owner_id', isEqualTo: _ownerId);
+      Query query = _db.collection('transactions');
 
       // Jika tahun dan bulan diberikan, tambahkan filter rentang waktu
       if (year != null && month != null) {
@@ -197,27 +191,27 @@ class ApiService {
       // batches so a busy month cannot make the transaction list fail.
       final customerSnapshots = await Future.wait([
         for (var index = 0; index < customerIds.length; index += 10)
-          _db
-              .collection('customers')
-              .where('owner_id', isEqualTo: _ownerId)
-              .where(
-                FieldPath.documentId,
-                whereIn: customerIds.sublist(
-                  index,
-                  index + 10 > customerIds.length
-                      ? customerIds.length
-                      : index + 10,
-                ),
-              )
-              .get(),
+          (() {
+            final query = _db.collection('customers');
+            return query
+                .where(
+                  FieldPath.documentId,
+                  whereIn: customerIds.sublist(
+                    index,
+                    index + 10 > customerIds.length
+                        ? customerIds.length
+                        : index + 10,
+                  ),
+                )
+                .get();
+          })(),
       ]);
 
       // 3. Buat map untuk pencarian cepat: customerId -> Customer object
       final customerMap = {
         for (final snapshot in customerSnapshots)
           for (final doc in snapshot.docs)
-            doc.id: Customer.fromMap(
-                (doc.data() as Map<String, dynamic>)..['customer_id'] = doc.id)
+            doc.id: Customer.fromMap(doc.data()..['customer_id'] = doc.id)
       };
 
       // 4. Gabungkan data customer ke dalam setiap transaksi

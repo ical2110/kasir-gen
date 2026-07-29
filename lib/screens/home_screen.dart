@@ -5,6 +5,8 @@ import 'package:kasir_gen/services/api_service.dart';
 import 'package:kasir_gen/services/printing_service.dart';
 import 'package:kasir_gen/services/pdf_invoice_service.dart';
 import 'package:kasir_gen/screens/transaction_form_screen.dart';
+import 'package:kasir_gen/screens/account_management_screen.dart';
+import 'package:kasir_gen/services/role_service.dart';
 import '../../widgets/app_drawer.dart'; // Import drawer yang sudah kita buat
 
 class HomeScreen extends StatefulWidget {
@@ -210,6 +212,26 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: const Text('Pesanan Aktif'),
         actions: [
+          StreamBuilder<AppUser?>(
+            stream: RoleService.watchCurrentUser(),
+            builder: (context, snapshot) {
+              if (snapshot.data?.isAdmin != true) {
+                return const SizedBox.shrink();
+              }
+              return IconButton(
+                icon: const Icon(Icons.admin_panel_settings),
+                tooltip: 'Verifikasi Akun',
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AccountManagementScreen(),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _refreshTransactions,

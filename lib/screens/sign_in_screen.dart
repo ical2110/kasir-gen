@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -29,10 +30,19 @@ class _SignInScreenState extends State<SignInScreen> {
     try {
       final auth = FirebaseAuth.instance;
       if (_createAccount) {
-        await auth.createUserWithEmailAndPassword(
+        final credential = await auth.createUserWithEmailAndPassword(
           email: _emailController.text.trim(),
           password: _passwordController.text,
         );
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(credential.user!.uid)
+            .set({
+          'email': credential.user!.email ?? _emailController.text.trim(),
+          'role': 'cashier',
+          'approved': false,
+          'created_at': FieldValue.serverTimestamp(),
+        });
       } else {
         await auth.signInWithEmailAndPassword(
           email: _emailController.text.trim(),
@@ -61,6 +71,8 @@ class _SignInScreenState extends State<SignInScreen> {
         return 'Kata sandi minimal harus 6 karakter.';
       case 'operation-not-allowed':
         return 'Masuk dengan email belum diaktifkan di Firebase.';
+      case 'permission-denied':
+        return 'Akun berhasil dibuat, tetapi profil gagal disimpan.';
       default:
         return 'Autentikasi gagal: ${error.message ?? error.code}';
     }
