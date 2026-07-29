@@ -1,5 +1,6 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+
+import '../services/session_service.dart';
 
 class PendingApprovalScreen extends StatelessWidget {
   const PendingApprovalScreen({super.key});
@@ -36,7 +37,7 @@ class PendingApprovalScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 24),
                 OutlinedButton.icon(
-                  onPressed: () => FirebaseAuth.instance.signOut(),
+                  onPressed: SessionService.signOut,
                   icon: const Icon(Icons.logout),
                   label: const Text('Keluar'),
                 ),

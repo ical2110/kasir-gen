@@ -34,6 +34,8 @@ class ExportService {
       'Layanan',
       'Kuantitas',
       'Subtotal',
+      'Diskon Transaksi',
+      'Total Transaksi',
       'Drop Point',
       'Status',
       /*  'Catatan', */
@@ -59,6 +61,8 @@ class ExportService {
           TextCellValue(item.serviceName),
           IntCellValue(item.quantity),
           TextCellValue(currencyFormatter.format(item.subtotal)),
+          TextCellValue(currencyFormatter.format(trx.discountAmount)),
+          TextCellValue(currencyFormatter.format(trx.totalAmount)),
           TextCellValue(trx.transactionSource ?? '-'),
           TextCellValue(statusToDisplayString(trx.status)),
           /*    TextCellValue(trx.notes ?? '-'), */
@@ -81,6 +85,8 @@ class ExportService {
           TextCellValue('N/A'), // Kuantitas tidak ada di struktur baru
           TextCellValue(
               currencyFormatter.format(trx.totalAmount)), // Gunakan totalAmount
+          TextCellValue(currencyFormatter.format(trx.discountAmount)),
+          TextCellValue(currencyFormatter.format(trx.totalAmount)),
           TextCellValue(trx.transactionSource ?? '-'),
           TextCellValue(statusToDisplayString(trx.status)),
           /*  TextCellValue(trx.notes ?? '-'), */

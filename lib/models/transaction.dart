@@ -8,6 +8,35 @@ enum TransactionStatus {
   paid,
 }
 
+enum DiscountType {
+  none,
+  percent,
+  fixed,
+}
+
+String discountTypeToDisplayString(DiscountType type) {
+  switch (type) {
+    case DiscountType.none:
+      return 'Tanpa diskon';
+    case DiscountType.percent:
+      return 'Persentase';
+    case DiscountType.fixed:
+      return 'Nominal rupiah';
+  }
+}
+
+double calculateDiscountAmount(
+  double subtotal,
+  DiscountType type,
+  double value,
+) {
+  if (subtotal <= 0 || value <= 0 || type == DiscountType.none) return 0;
+  final amount = type == DiscountType.percent
+      ? subtotal * value.clamp(0, 100) / 100
+      : value;
+  return amount.clamp(0, subtotal).toDouble();
+}
+
 String statusToDisplayString(TransactionStatus status) {
   switch (status) {
     case TransactionStatus.in_progress:
@@ -16,8 +45,6 @@ String statusToDisplayString(TransactionStatus status) {
       return 'Selesai';
     case TransactionStatus.paid:
       return 'Dibayar';
-    default:
-      return 'Tidak Diketahui';
   }
 }
 
@@ -25,6 +52,11 @@ class Transaction {
   final String id;
   final String customerId;
   final List<TransactionItem> items;
+  final double subtotalAmount;
+  final DiscountType discountType;
+  final double discountValue;
+  final double discountAmount;
+  final String? discountNotes;
   final double totalAmount;
   final TransactionStatus status;
   final String? notes;
@@ -36,11 +68,18 @@ class Transaction {
   // Data denormalisasi (tidak disimpan langsung, tapi bisa di-populate)
   final Customer? customer;
 
+  DateTime? get effectiveDate => createdAt ?? completedAt ?? updatedAt;
+
   Transaction({
     required this.id,
     required this.customerId,
     required this.items,
     required this.totalAmount,
+    double? subtotalAmount,
+    this.discountType = DiscountType.none,
+    this.discountValue = 0,
+    this.discountAmount = 0,
+    this.discountNotes,
     required this.status,
     this.notes,
     this.createdAt,
@@ -48,7 +87,7 @@ class Transaction {
     this.updatedAt,
     this.transactionSource, // <-- Field baru ditambahkan di sini
     this.customer,
-  });
+  }) : subtotalAmount = subtotalAmount ?? totalAmount;
 
   factory Transaction.fromMap(Map<String, dynamic> map) {
     // Konversi status dari String ke Enum
@@ -67,6 +106,12 @@ class Transaction {
         status = TransactionStatus.in_progress; // Default
     }
 
+    final totalAmount = (map['total_amount'] as num?)?.toDouble() ?? 0.0;
+    final discountType = DiscountType.values.firstWhere(
+      (type) => type.name == map['discount_type'],
+      orElse: () => DiscountType.none,
+    );
+
     return Transaction(
       id: map['transaction_id'] ?? '',
       customerId: map['customer_id'] ?? '',
@@ -74,7 +119,13 @@ class Transaction {
               ?.map((item) => TransactionItem.fromMap(item))
               .toList() ??
           [],
-      totalAmount: (map['total_amount'] as num?)?.toDouble() ?? 0.0,
+      subtotalAmount:
+          (map['subtotal_amount'] as num?)?.toDouble() ?? totalAmount,
+      discountType: discountType,
+      discountValue: (map['discount_value'] as num?)?.toDouble() ?? 0.0,
+      discountAmount: (map['discount_amount'] as num?)?.toDouble() ?? 0.0,
+      discountNotes: map['discount_notes'],
+      totalAmount: totalAmount,
       status: status,
       notes: map['transaction_notes'],
       createdAt: (map['created_at'] as Timestamp?)?.toDate(),
@@ -93,6 +144,11 @@ class Transaction {
       if (includeId) 'transaction_id': id,
       'customer_id': customerId,
       'items': items.map((item) => item.toMap()).toList(),
+      'subtotal_amount': subtotalAmount,
+      'discount_type': discountType.name,
+      'discount_value': discountValue,
+      'discount_amount': discountAmount,
+      'discount_notes': discountNotes,
       'total_amount': totalAmount,
       'status': status.name, // Konversi enum ke string
       'transaction_notes': notes,
@@ -113,6 +169,11 @@ class Transaction {
     String? id,
     String? customerId,
     List<TransactionItem>? items,
+    double? subtotalAmount,
+    DiscountType? discountType,
+    double? discountValue,
+    double? discountAmount,
+    String? discountNotes,
     double? totalAmount,
     TransactionStatus? status,
     String? notes,
@@ -126,6 +187,11 @@ class Transaction {
       id: id ?? this.id,
       customerId: customerId ?? this.customerId,
       items: items ?? this.items,
+      subtotalAmount: subtotalAmount ?? this.subtotalAmount,
+      discountType: discountType ?? this.discountType,
+      discountValue: discountValue ?? this.discountValue,
+      discountAmount: discountAmount ?? this.discountAmount,
+      discountNotes: discountNotes ?? this.discountNotes,
       totalAmount: totalAmount ?? this.totalAmount,
       status: status ?? this.status,
       notes: notes ?? this.notes,

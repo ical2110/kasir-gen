@@ -95,6 +95,15 @@ class PrintingServiceImpl implements PrintingService {
     }
     _bluetooth.printCustom("--------------------------------", 1, 1);
     _bluetooth.printLeftRight(
+        "Subtotal:", currencyFormatter.format(transaction.subtotalAmount), 1);
+    if (transaction.discountAmount > 0) {
+      final discountLabel = transaction.discountType == DiscountType.percent
+          ? "Diskon ${transaction.discountValue.toStringAsFixed(0)}%:"
+          : "Diskon:";
+      _bluetooth.printLeftRight(discountLabel,
+          "-${currencyFormatter.format(transaction.discountAmount)}", 1);
+    }
+    _bluetooth.printLeftRight(
         "TOTAL:", currencyFormatter.format(transaction.totalAmount), 2);
     _bluetooth.printNewLine();
     _bluetooth.printCustom("Terima kasih!", 1, 1);

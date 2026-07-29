@@ -1,4 +1,7 @@
 import 'dart:html' as html;
+import 'dart:typed_data';
+
+import 'package:share_plus/share_plus.dart';
 
 import '../models/transaction.dart';
 import 'invoice_pdf_document.dart';
@@ -18,6 +21,22 @@ class _WebPdfInvoiceService implements PdfInvoiceService {
     link.click();
     link.remove();
     html.Url.revokeObjectUrl(url);
+  }
+
+  @override
+  Future<void> generateAndShare(Transaction transaction) async {
+    final bytes = await buildInvoicePdf(transaction);
+    await Share.shareXFiles(
+      [
+        XFile.fromData(
+          Uint8List.fromList(bytes),
+          mimeType: 'application/pdf',
+        ),
+      ],
+      subject: 'Struk pembayaran',
+      text: 'Struk pembayaran ${transaction.customer?.name ?? ''}'.trim(),
+      fileNameOverrides: ['struk-${transaction.id}.pdf'],
+    );
   }
 }
 

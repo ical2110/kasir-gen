@@ -102,13 +102,13 @@ class _TransactionManagementScreenState
     });
   }
 
-  Future<void> _downloadPaidReceipt(Transaction transaction) async {
+  Future<void> _sharePaidReceipt(Transaction transaction) async {
     try {
-      await _pdfService.generateAndOpen(transaction);
+      await _pdfService.generateAndShare(transaction);
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal membuat struk: $error')),
+        SnackBar(content: Text('Gagal membagikan struk: $error')),
       );
     }
   }
@@ -220,10 +220,10 @@ class _TransactionManagementScreenState
                           children: [
                             if (trx.status == TransactionStatus.paid)
                               IconButton(
-                                icon: const Icon(Icons.picture_as_pdf,
+                                icon: const Icon(Icons.share,
                                     color: Colors.green),
-                                onPressed: () => _downloadPaidReceipt(trx),
-                                tooltip: 'Unduh struk lunas',
+                                onPressed: () => _sharePaidReceipt(trx),
+                                tooltip: 'Bagikan struk ke WhatsApp',
                               ),
                             IconButton(
                               icon: const Icon(Icons.delete_outline,

@@ -140,16 +140,14 @@ class ApiService {
 
       // Jika tahun dan bulan diberikan, tambahkan filter rentang waktu
       if (year != null && month != null) {
-        final DateTime startDate = DateTime(year, month, 1);
-        // Akhir bulan adalah awal dari bulan berikutnya
-        final DateTime endDate = DateTime(year, month + 1, 1);
-
-        // Saat menggunakan filter rentang, orderBy pertama harus pada field yang sama.
-        query = query
-            .where('created_at',
-                isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
-            .where('created_at', isLessThan: Timestamp.fromDate(endDate));
-        // Tidak perlu orderBy di sini jika akan diurutkan di client
+        // Ambil semua status lalu filter bulan di sisi aplikasi. Sebagian data
+        // lama tidak memiliki created_at, sehingga perlu fallback ke
+        // completed_at atau updated_at agar tetap muncul di laporan.
+        query = query.where('status', whereIn: [
+          TransactionStatus.in_progress.name,
+          TransactionStatus.completed.name,
+          TransactionStatus.paid.name,
+        ]);
       } else if (statuses != null && statuses.isNotEmpty) {
         // Jika ada filter status, gunakan itu.
         // Firestore 'in' query supports up to 10 elements.
@@ -168,11 +166,20 @@ class ApiService {
       }
 
       final transactionSnapshot = await query.get();
-      final transactions = transactionSnapshot.docs.map((doc) {
+      var transactions = transactionSnapshot.docs.map((doc) {
         final trxData = doc.data() as Map<String, dynamic>;
         trxData['transaction_id'] = doc.id;
         return Transaction.fromMap(trxData);
       }).toList();
+
+      if (year != null && month != null) {
+        transactions = transactions.where((transaction) {
+          final effectiveDate = transaction.effectiveDate;
+          return effectiveDate != null &&
+              effectiveDate.year == year &&
+              effectiveDate.month == month;
+        }).toList();
+      }
 
       // Jika tidak ada transaksi, kembalikan list kosong
       if (transactions.isEmpty) {
@@ -236,6 +243,7 @@ class ApiService {
           transaction.toMap(includeId: false, includeCreatedAt: false);
       transactionData['customer_name'] = transaction.customer?.name;
       transactionData['owner_id'] = _ownerId;
+      transactionData['created_at'] = FieldValue.serverTimestamp();
 
       final docRef = await _db.collection('transactions').add(transactionData);
       return transaction.copyWith(id: docRef.id);
@@ -257,6 +265,40 @@ class ApiService {
           .update(transactionData);
     } catch (e) {
       throw Exception('Gagal memperbarui transaksi: $e');
+    }
+  }
+
+  Future<void> updateTransactionStatus(
+    String transactionId,
+    TransactionStatus status, {
+    DateTime? completedAt,
+    double? subtotalAmount,
+    DiscountType? discountType,
+    double? discountValue,
+    double? discountAmount,
+    String? discountNotes,
+    double? totalAmount,
+  }) async {
+    try {
+      final data = <String, dynamic>{
+        'status': status.name,
+        'completed_at':
+            completedAt == null ? null : Timestamp.fromDate(completedAt),
+        'updated_at': FieldValue.serverTimestamp(),
+      };
+      if (status == TransactionStatus.paid) {
+        data.addAll({
+          'subtotal_amount': subtotalAmount,
+          'discount_type': (discountType ?? DiscountType.none).name,
+          'discount_value': discountValue ?? 0,
+          'discount_amount': discountAmount ?? 0,
+          'discount_notes': discountNotes,
+          'total_amount': totalAmount,
+        });
+      }
+      await _db.collection('transactions').doc(transactionId).update(data);
+    } catch (e) {
+      throw Exception('Gagal memperbarui status transaksi: $e');
     }
   }
 

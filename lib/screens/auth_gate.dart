@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../services/role_service.dart';
+import '../services/session_service.dart';
 import 'home_screen.dart';
 import 'pending_approval_screen.dart';
 import 'sign_in_screen.dart';
@@ -23,28 +24,72 @@ class AuthGate extends StatelessWidget {
 
         if (snapshot.data == null) return const SignInScreen();
 
-        return StreamBuilder<AppUser?>(
-          stream: RoleService.watchCurrentUser(),
-          builder: (context, profileSnapshot) {
-            if (profileSnapshot.connectionState == ConnectionState.waiting) {
-              return const Scaffold(
-                body: Center(child: CircularProgressIndicator()),
-              );
-            }
-            if (profileSnapshot.hasError) {
-              return Scaffold(
-                body: Center(
-                  child: Text('Gagal memuat profil: ${profileSnapshot.error}'),
-                ),
-              );
-            }
+        return _SessionGuard(user: snapshot.data!);
+      },
+    );
+  }
+}
 
-            final profile = profileSnapshot.data;
-            if (profile == null || !profile.approved) {
-              return const PendingApprovalScreen();
-            }
-            return const HomeScreen();
-          },
+class _SessionGuard extends StatefulWidget {
+  const _SessionGuard({required this.user});
+
+  final User user;
+
+  @override
+  State<_SessionGuard> createState() => _SessionGuardState();
+}
+
+class _SessionGuardState extends State<_SessionGuard> {
+  late final Future<bool> _validation;
+
+  @override
+  void initState() {
+    super.initState();
+    _validation = SessionService.validate(widget.user);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<bool>(
+      future: _validation,
+      builder: (context, validationSnapshot) {
+        if (validationSnapshot.connectionState != ConnectionState.done) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        if (validationSnapshot.data != true) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        return SessionActivityTracker(
+          user: widget.user,
+          child: StreamBuilder<AppUser?>(
+            stream: RoleService.watchCurrentUser(),
+            builder: (context, profileSnapshot) {
+              if (profileSnapshot.connectionState == ConnectionState.waiting) {
+                return const Scaffold(
+                  body: Center(child: CircularProgressIndicator()),
+                );
+              }
+              if (profileSnapshot.hasError) {
+                return Scaffold(
+                  body: Center(
+                    child:
+                        Text('Gagal memuat profil: ${profileSnapshot.error}'),
+                  ),
+                );
+              }
+
+              final profile = profileSnapshot.data;
+              if (profile == null || !profile.approved) {
+                return const PendingApprovalScreen();
+              }
+              return const HomeScreen();
+            },
+          ),
         );
       },
     );

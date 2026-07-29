@@ -15,6 +15,35 @@ service cloud.firestore {
     function customerExists() {
       return exists(/databases/$(database)/documents/customers/$(request.resource.data.customer_id));
     }
+    function validCashierStatusUpdate() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      let completing = resource.data.status == 'in_progress'
+        && request.resource.data.status == 'completed'
+        && changed.hasOnly(['status', 'completed_at', 'updated_at']);
+      let paying = resource.data.status == 'completed'
+        && request.resource.data.status == 'paid'
+        && changed.hasOnly([
+          'status',
+          'completed_at',
+          'updated_at',
+          'subtotal_amount',
+          'discount_type',
+          'discount_value',
+          'discount_amount',
+          'discount_notes',
+          'total_amount'
+        ])
+        && request.resource.data.discount_type in ['none', 'percent', 'fixed']
+        && request.resource.data.subtotal_amount >= 0
+        && request.resource.data.discount_value >= 0
+        && request.resource.data.discount_amount >= 0
+        && request.resource.data.discount_amount <= request.resource.data.subtotal_amount
+        && request.resource.data.total_amount
+          == request.resource.data.subtotal_amount - request.resource.data.discount_amount
+        && (request.resource.data.discount_type != 'percent'
+          || request.resource.data.discount_value <= 100);
+      return cashier() && (completing || paying);
+    }
 
     match /users/{userId} {
       allow create: if signedIn()
@@ -36,7 +65,8 @@ service cloud.firestore {
     match /transactions/{id} {
       allow read: if approved();
       allow create: if admin() || (cashier() && ownsNew() && customerExists());
-      allow update, delete: if admin();
+      allow update: if admin() || validCashierStatusUpdate();
+      allow delete: if admin();
     }
   }
 }

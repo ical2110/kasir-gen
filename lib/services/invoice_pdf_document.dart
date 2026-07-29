@@ -66,9 +66,38 @@ Future<List<int>> buildInvoicePdf(Transaction transaction) async {
           pw.SizedBox(height: 16),
           pw.Align(
             alignment: pw.Alignment.centerRight,
-            child: pw.Text(
-              'GRAND TOTAL: ${currency.format(transaction.totalAmount)}',
-              style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 18),
+            child: pw.SizedBox(
+              width: 260,
+              child: pw.Column(
+                children: [
+                  _amountRow(
+                    'Subtotal',
+                    currency.format(transaction.subtotalAmount),
+                  ),
+                  if (transaction.discountAmount > 0)
+                    _amountRow(
+                      transaction.discountType == DiscountType.percent
+                          ? 'Diskon (${transaction.discountValue.toStringAsFixed(0)}%)'
+                          : 'Diskon',
+                      '- ${currency.format(transaction.discountAmount)}',
+                    ),
+                  pw.Divider(),
+                  _amountRow(
+                    'GRAND TOTAL',
+                    currency.format(transaction.totalAmount),
+                    bold: true,
+                    fontSize: 16,
+                  ),
+                  if ((transaction.discountNotes ?? '').isNotEmpty)
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.only(top: 6),
+                      child: pw.Text(
+                        'Catatan: ${transaction.discountNotes}',
+                        style: const pw.TextStyle(fontSize: 9),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
           if (transaction.status == TransactionStatus.paid) ...[
@@ -90,4 +119,26 @@ Future<List<int>> buildInvoicePdf(Transaction transaction) async {
   );
 
   return pdf.save();
+}
+
+pw.Widget _amountRow(
+  String label,
+  String value, {
+  bool bold = false,
+  double fontSize = 11,
+}) {
+  final style = pw.TextStyle(
+    fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
+    fontSize: fontSize,
+  );
+  return pw.Padding(
+    padding: const pw.EdgeInsets.symmetric(vertical: 2),
+    child: pw.Row(
+      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+      children: [
+        pw.Text(label, style: style),
+        pw.Text(value, style: style),
+      ],
+    ),
+  );
 }

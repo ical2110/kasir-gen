@@ -48,7 +48,12 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
   Customer? _selectedCustomer;
   String? _selectedSource; // State untuk Drop Point
   final _notesController = TextEditingController();
+  final _discountValueController = TextEditingController();
+  final _discountNotesController = TextEditingController();
   List<TransactionItemController> _itemControllers = [];
+  DiscountType _discountType = DiscountType.none;
+  double _subtotalAmount = 0.0;
+  double _discountAmount = 0.0;
   double _totalAmount = 0.0;
 
   bool _isLoading = true; // Loading untuk data awal
@@ -59,6 +64,7 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
     super.initState();
     _loadInitialData();
     _selectedSource = 'Workshop'; // Nilai default
+    _discountValueController.addListener(_calculateTotal);
     // Tambahkan satu baris item secara default
     _addTransactionItem();
   }
@@ -66,6 +72,8 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
   @override
   void dispose() {
     _notesController.dispose();
+    _discountValueController.dispose();
+    _discountNotesController.dispose();
     for (var controller in _itemControllers) {
       controller.dispose();
     }
@@ -121,14 +129,19 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
   }
 
   void _calculateTotal() {
-    double currentTotal = 0.0;
+    double subtotal = 0.0;
     for (var controller in _itemControllers) {
       final quantity = int.tryParse(controller.quantityController.text) ?? 0;
       final price = controller.selectedPrice?.price ?? 0.0;
-      currentTotal += quantity * price;
+      subtotal += quantity * price;
     }
+    final discountValue = double.tryParse(_discountValueController.text) ?? 0;
+    final discountAmount =
+        calculateDiscountAmount(subtotal, _discountType, discountValue);
     setState(() {
-      _totalAmount = currentTotal;
+      _subtotalAmount = subtotal;
+      _discountAmount = discountAmount;
+      _totalAmount = subtotal - discountAmount;
     });
   }
 
@@ -184,6 +197,11 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
         id: '', // ID akan dibuat oleh backend
         customerId: _selectedCustomer!.id,
         status: TransactionStatus.in_progress,
+        subtotalAmount: _subtotalAmount,
+        discountType: _discountType,
+        discountValue: double.tryParse(_discountValueController.text) ?? 0,
+        discountAmount: _discountAmount,
+        discountNotes: _discountNotesController.text.trim(),
         totalAmount: _totalAmount,
         items: transactionItems,
         notes: _notesController.text,
@@ -280,6 +298,68 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
 
                   const SizedBox(height: 16),
 
+                  DropdownButtonFormField<DiscountType>(
+                    initialValue: _discountType,
+                    decoration:
+                        const InputDecoration(labelText: 'Jenis diskon'),
+                    items: DiscountType.values
+                        .map(
+                          (type) => DropdownMenuItem(
+                            value: type,
+                            child: Text(discountTypeToDisplayString(type)),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        _discountType = value ?? DiscountType.none;
+                        if (_discountType == DiscountType.none) {
+                          _discountValueController.clear();
+                        }
+                        _calculateTotal();
+                      });
+                    },
+                  ),
+                  if (_discountType != DiscountType.none) ...[
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _discountValueController,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                      ],
+                      decoration: InputDecoration(
+                        labelText: _discountType == DiscountType.percent
+                            ? 'Diskon (%)'
+                            : 'Diskon (Rp)',
+                      ),
+                      validator: (value) {
+                        if (_discountType == DiscountType.none) return null;
+                        final number = double.tryParse(value ?? '');
+                        if (number == null || number <= 0) {
+                          return 'Nilai diskon harus lebih dari 0';
+                        }
+                        if (_discountType == DiscountType.percent &&
+                            number > 100) {
+                          return 'Persentase maksimal 100%';
+                        }
+                        if (_discountType == DiscountType.fixed &&
+                            number > _subtotalAmount) {
+                          return 'Diskon tidak boleh melebihi subtotal';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _discountNotesController,
+                      decoration: const InputDecoration(
+                        labelText: 'Catatan diskon (opsional)',
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+
                   // Catatan
                   TextFormField(
                     controller: _notesController,
@@ -289,9 +369,24 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Total
                   ListTile(
-                    title: const Text('Total Harga',
+                    title: const Text('Subtotal'),
+                    trailing: Text('Rp ${_subtotalAmount.toStringAsFixed(0)}'),
+                  ),
+                  if (_discountAmount > 0)
+                    ListTile(
+                      title: Text(
+                        _discountType == DiscountType.percent
+                            ? 'Diskon (${_discountValueController.text}%)'
+                            : 'Diskon',
+                      ),
+                      trailing: Text(
+                        '- Rp ${_discountAmount.toStringAsFixed(0)}',
+                        style: const TextStyle(color: Colors.green),
+                      ),
+                    ),
+                  ListTile(
+                    title: const Text('Total Pembayaran',
                         style: TextStyle(fontWeight: FontWeight.bold)),
                     trailing: Text(
                       'Rp ${_totalAmount.toStringAsFixed(0)}',

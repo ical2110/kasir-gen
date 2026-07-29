@@ -90,7 +90,11 @@ class _HomeScreenState extends State<HomeScreen> {
         completedAt: DateTime.now(),
       );
 
-      await _apiService.updateTransaction(updatedTransaction);
+      await _apiService.updateTransactionStatus(
+        updatedTransaction.id,
+        updatedTransaction.status,
+        completedAt: updatedTransaction.completedAt,
+      );
 
       // Panggil refresh untuk memuat ulang data dari server
       _refreshTransactions();
@@ -152,25 +156,12 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _payTransaction(Transaction transaction) async {
-    final confirm = await showDialog<bool>(
+    final payment = await showDialog<_PaymentDiscountResult>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Konfirmasi Pembayaran'),
-        content: const Text('Apakah Anda yakin pesanan ini sudah dibayar?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Batal'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Sudah Dibayar'),
-          ),
-        ],
-      ),
+      builder: (context) => _PaymentDiscountDialog(transaction: transaction),
     );
 
-    if (confirm != true) return;
+    if (payment == null) return;
 
     try {
       // Optimistic UI Update: Hapus item dari daftar lokal secara langsung
@@ -180,8 +171,24 @@ class _HomeScreenState extends State<HomeScreen> {
       final updatedTransaction = transaction.copyWith(
         status: TransactionStatus.paid,
         completedAt: transaction.completedAt ?? DateTime.now(),
+        subtotalAmount: payment.subtotalAmount,
+        discountType: payment.discountType,
+        discountValue: payment.discountValue,
+        discountAmount: payment.discountAmount,
+        discountNotes: payment.discountNotes,
+        totalAmount: payment.totalAmount,
       );
-      await _apiService.updateTransaction(updatedTransaction);
+      await _apiService.updateTransactionStatus(
+        updatedTransaction.id,
+        updatedTransaction.status,
+        completedAt: updatedTransaction.completedAt,
+        subtotalAmount: updatedTransaction.subtotalAmount,
+        discountType: updatedTransaction.discountType,
+        discountValue: updatedTransaction.discountValue,
+        discountAmount: updatedTransaction.discountAmount,
+        discountNotes: updatedTransaction.discountNotes,
+        totalAmount: updatedTransaction.totalAmount,
+      );
 
       // Panggil refresh untuk memuat ulang data dari server
       _refreshTransactions();
@@ -303,6 +310,238 @@ class _HomeScreenState extends State<HomeScreen> {
         tooltip: 'Tambah Transaksi',
         icon: const Icon(Icons.add),
         label: const Text('Tambah Transaksi'),
+      ),
+    );
+  }
+}
+
+class _PaymentDiscountResult {
+  const _PaymentDiscountResult({
+    required this.subtotalAmount,
+    required this.discountType,
+    required this.discountValue,
+    required this.discountAmount,
+    required this.discountNotes,
+  });
+
+  final double subtotalAmount;
+  final DiscountType discountType;
+  final double discountValue;
+  final double discountAmount;
+  final String discountNotes;
+
+  double get totalAmount => subtotalAmount - discountAmount;
+}
+
+class _PaymentDiscountDialog extends StatefulWidget {
+  const _PaymentDiscountDialog({required this.transaction});
+
+  final Transaction transaction;
+
+  @override
+  State<_PaymentDiscountDialog> createState() => _PaymentDiscountDialogState();
+}
+
+class _PaymentDiscountDialogState extends State<_PaymentDiscountDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _valueController;
+  late final TextEditingController _notesController;
+  late DiscountType _discountType;
+
+  double get _subtotal {
+    if (widget.transaction.subtotalAmount > 0) {
+      return widget.transaction.subtotalAmount;
+    }
+    return widget.transaction.items.fold(
+      0,
+      (total, item) => total + item.subtotal,
+    );
+  }
+
+  double get _discountValue => double.tryParse(_valueController.text) ?? 0;
+
+  double get _discountAmount => calculateDiscountAmount(
+        _subtotal,
+        _discountType,
+        _discountValue,
+      );
+
+  @override
+  void initState() {
+    super.initState();
+    _discountType = widget.transaction.discountType;
+    _valueController = TextEditingController(
+      text: widget.transaction.discountValue > 0
+          ? widget.transaction.discountValue.toStringAsFixed(0)
+          : '',
+    )..addListener(_refresh);
+    _notesController =
+        TextEditingController(text: widget.transaction.discountNotes);
+  }
+
+  void _refresh() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _valueController
+      ..removeListener(_refresh)
+      ..dispose();
+    _notesController.dispose();
+    super.dispose();
+  }
+
+  void _confirm() {
+    if (!_formKey.currentState!.validate()) return;
+    Navigator.pop(
+      context,
+      _PaymentDiscountResult(
+        subtotalAmount: _subtotal,
+        discountType: _discountType,
+        discountValue: _discountType == DiscountType.none ? 0 : _discountValue,
+        discountAmount: _discountAmount,
+        discountNotes: _notesController.text.trim(),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final currency = NumberFormat.currency(
+      locale: 'id_ID',
+      symbol: 'Rp ',
+      decimalDigits: 0,
+    );
+
+    return AlertDialog(
+      title: const Text('Konfirmasi Pembayaran'),
+      content: SizedBox(
+        width: 420,
+        child: Form(
+          key: _formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<DiscountType>(
+                  initialValue: _discountType,
+                  decoration: const InputDecoration(labelText: 'Jenis diskon'),
+                  items: DiscountType.values
+                      .map(
+                        (type) => DropdownMenuItem(
+                          value: type,
+                          child: Text(discountTypeToDisplayString(type)),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      _discountType = value ?? DiscountType.none;
+                      if (_discountType == DiscountType.none) {
+                        _valueController.clear();
+                      }
+                    });
+                  },
+                ),
+                if (_discountType != DiscountType.none) ...[
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _valueController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: _discountType == DiscountType.percent
+                          ? 'Diskon (%)'
+                          : 'Diskon (Rp)',
+                    ),
+                    validator: (value) {
+                      final number = double.tryParse(value ?? '');
+                      if (number == null || number <= 0) {
+                        return 'Nilai diskon harus lebih dari 0';
+                      }
+                      if (_discountType == DiscountType.percent &&
+                          number > 100) {
+                        return 'Persentase maksimal 100%';
+                      }
+                      if (_discountType == DiscountType.fixed &&
+                          number > _subtotal) {
+                        return 'Diskon tidak boleh melebihi subtotal';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _notesController,
+                    decoration: const InputDecoration(
+                      labelText: 'Catatan diskon (opsional)',
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 20),
+                _PaymentAmountRow(
+                  label: 'Subtotal',
+                  value: currency.format(_subtotal),
+                ),
+                if (_discountAmount > 0)
+                  _PaymentAmountRow(
+                    label: 'Potongan',
+                    value: '- ${currency.format(_discountAmount)}',
+                    valueColor: Colors.green,
+                  ),
+                const Divider(),
+                _PaymentAmountRow(
+                  label: 'Total pembayaran',
+                  value: currency.format(_subtotal - _discountAmount),
+                  bold: true,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Batal'),
+        ),
+        FilledButton(
+          onPressed: _confirm,
+          child: const Text('Konfirmasi Bayar'),
+        ),
+      ],
+    );
+  }
+}
+
+class _PaymentAmountRow extends StatelessWidget {
+  const _PaymentAmountRow({
+    required this.label,
+    required this.value,
+    this.bold = false,
+    this.valueColor,
+  });
+
+  final String label;
+  final String value;
+  final bool bold;
+  final Color? valueColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = TextStyle(
+      fontWeight: bold ? FontWeight.bold : FontWeight.normal,
+      color: valueColor,
+    );
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: style),
+          const SizedBox(width: 24),
+          Text(value, style: style),
+        ],
       ),
     );
   }
