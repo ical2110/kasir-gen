@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "302473781383",
-    "project_id": "kasir-gen",
-    "storage_bucket": "kasir-gen.firebasestorage.app"
+    "project_number": "556265980791",
+    "project_id": "kasir-gen-live",
+    "storage_bucket": "kasir-gen-live.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:302473781383:android:c2111bc1ec7e05791d5822",
+        "mobilesdk_app_id": "1:556265980791:android:da9ec32952e1dbe2641772",
         "android_client_info": {
           "package_name": "com.example.kasir_gen"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyDfA8EdskSTIYNBboknFMwGvWTuMCrs1Ps"
+          "current_key": "AIzaSyCyLZreHVIYPbAONbc7vryJcuvpGf8Fc7Q"
         }
       ],
       "services": {

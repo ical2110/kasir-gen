@@ -1,13 +1,40 @@
 {
   "flutter": {
     "platforms": {
-      "android": {"default": {"projectId": "kasir-gen", "appId": "1:302473781383:android:c2111bc1ec7e05791d5822", "fileOutput": "android/app/google-services.json"}},
-      "ios": {"default": {"projectId": "kasir-gen", "appId": "1:302473781383:ios:1735cbf886032acd1d5822", "uploadDebugSymbols": false, "fileOutput": "ios/Runner/GoogleService-Info.plist"}},
-      "dart": {"lib/firebase_options.dart": {"projectId": "kasir-gen", "configurations": {"android": "1:302473781383:android:c2111bc1ec7e05791d5822", "ios": "1:302473781383:ios:1735cbf886032acd1d5822", "web": "1:302473781383:web:043164502427eda01d5822", "windows": "1:302473781383:web:9ef787143f1356e31d5822"}}}
+      "android": {
+        "default": {
+          "projectId": "kasir-gen-live",
+          "appId": "1:556265980791:android:da9ec32952e1dbe2641772",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "kasir-gen-live",
+          "configurations": {
+            "android": "1:556265980791:android:da9ec32952e1dbe2641772",
+            "web": "1:556265980791:web:128d3ee0a1872140641772"
+          }
+        }
+      }
     }
   },
   "firestore": {
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
+  },
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
   }
 }

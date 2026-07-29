@@ -71,6 +71,19 @@ Future<List<int>> buildInvoicePdf(Transaction transaction) async {
               style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 18),
             ),
           ),
+          if (transaction.status == TransactionStatus.paid) ...[
+            pw.SizedBox(height: 24),
+            pw.Center(
+              child: pw.Text(
+                'LUNAS',
+                style: pw.TextStyle(
+                  color: PdfColors.green700,
+                  fontWeight: pw.FontWeight.bold,
+                  fontSize: 22,
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     ),

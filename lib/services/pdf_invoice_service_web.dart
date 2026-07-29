@@ -1,6 +1,4 @@
-import 'dart:typed_data';
-
-import 'package:file_saver/file_saver.dart';
+import 'dart:html' as html;
 
 import '../models/transaction.dart';
 import 'invoice_pdf_document.dart';
@@ -10,12 +8,16 @@ class _WebPdfInvoiceService implements PdfInvoiceService {
   @override
   Future<void> generateAndOpen(Transaction transaction) async {
     final bytes = await buildInvoicePdf(transaction);
-    await FileSaver.instance.saveAs(
-      name: 'invoice-${transaction.id}',
-      bytes: Uint8List.fromList(bytes),
-      ext: 'pdf',
-      mimeType: MimeType.pdf,
-    );
+    final blob = html.Blob([bytes], 'application/pdf');
+    final url = html.Url.createObjectUrlFromBlob(blob);
+    final link = html.AnchorElement(href: url)
+      ..download = 'invoice-${transaction.id}.pdf'
+      ..style.display = 'none';
+
+    html.document.body?.children.add(link);
+    link.click();
+    link.remove();
+    html.Url.revokeObjectUrl(url);
   }
 }
 

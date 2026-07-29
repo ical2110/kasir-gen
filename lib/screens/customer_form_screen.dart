@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/customer.dart';
 import '../services/api_service.dart';
 
@@ -112,6 +113,7 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
                 controller: _phoneController,
                 decoration: InputDecoration(labelText: 'Nomor Telepon'),
                 keyboardType: TextInputType.phone,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 validator: (value) =>
                     value!.isEmpty ? 'Nomor telepon tidak boleh kosong' : null,
               ),

@@ -4,7 +4,7 @@ Aplikasi kasir Flutter untuk layanan laundry, dengan Firebase Authentication dan
 
 ## Platform yang didukung
 
-Android, iOS, Windows, dan web. macOS serta Linux sengaja menampilkan pesan tidak didukung karena Firebase untuk kedua platform belum dikonfigurasi pada proyek ini.
+Android dan web. Platform lain menampilkan pesan tidak didukung karena Firebase belum dikonfigurasi untuk platform tersebut pada proyek produksi.
 
 ## Setup Firebase sebelum rilis
 

@@ -13,12 +13,9 @@ void main() {
 
 Future<void> _initializeServices() async {
   await initializeDateFormatting('id_ID', null);
-  if (!kIsWeb &&
-      defaultTargetPlatform != TargetPlatform.android &&
-      defaultTargetPlatform != TargetPlatform.iOS &&
-      defaultTargetPlatform != TargetPlatform.windows) {
+  if (!kIsWeb && defaultTargetPlatform != TargetPlatform.android) {
     throw UnsupportedError(
-      'Kasir Gen saat ini mendukung Android, iOS, Windows, dan web. '
+      'Kasir Gen saat ini mendukung Android dan web. '
       'Firebase belum dikonfigurasi untuk platform ini.',
     );
   }

@@ -22,15 +22,12 @@ class DefaultFirebaseOptions {
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
         return android;
-      case TargetPlatform.iOS:
-        return ios;
       case TargetPlatform.macOS:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for macos - '
           'you can reconfigure this by running the FlutterFire CLI again.',
         );
       case TargetPlatform.windows:
-        return windows;
       case TargetPlatform.linux:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for linux - '
@@ -44,39 +41,20 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyBh7FwUWICRHe7d38y_ygMjEz7td6ybaMw',
-    appId: '1:302473781383:web:043164502427eda01d5822',
-    messagingSenderId: '302473781383',
-    projectId: 'kasir-gen',
-    authDomain: 'kasir-gen.firebaseapp.com',
-    storageBucket: 'kasir-gen.firebasestorage.app',
-    measurementId: 'G-4GBW1VFYDF',
+    apiKey: 'AIzaSyD6yHgzMiz7aWnbcu4650sA4ioKsoARF20',
+    appId: '1:556265980791:web:128d3ee0a1872140641772',
+    messagingSenderId: '556265980791',
+    projectId: 'kasir-gen-live',
+    authDomain: 'kasir-gen-live.firebaseapp.com',
+    storageBucket: 'kasir-gen-live.firebasestorage.app',
+    measurementId: 'G-FF03SSM2WS',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyDfA8EdskSTIYNBboknFMwGvWTuMCrs1Ps',
-    appId: '1:302473781383:android:c2111bc1ec7e05791d5822',
-    messagingSenderId: '302473781383',
-    projectId: 'kasir-gen',
-    storageBucket: 'kasir-gen.firebasestorage.app',
-  );
-
-  static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyDhilBWkr6P4eCPdBOYAYR79o-BGVkv0PU',
-    appId: '1:302473781383:ios:1735cbf886032acd1d5822',
-    messagingSenderId: '302473781383',
-    projectId: 'kasir-gen',
-    storageBucket: 'kasir-gen.firebasestorage.app',
-    iosBundleId: 'com.example.kasirGen',
-  );
-
-  static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyBh7FwUWICRHe7d38y_ygMjEz7td6ybaMw',
-    appId: '1:302473781383:web:9ef787143f1356e31d5822',
-    messagingSenderId: '302473781383',
-    projectId: 'kasir-gen',
-    authDomain: 'kasir-gen.firebaseapp.com',
-    storageBucket: 'kasir-gen.firebasestorage.app',
-    measurementId: 'G-SPXCNFWJPH',
+    apiKey: 'AIzaSyCyLZreHVIYPbAONbc7vryJcuvpGf8Fc7Q',
+    appId: '1:556265980791:android:da9ec32952e1dbe2641772',
+    messagingSenderId: '556265980791',
+    projectId: 'kasir-gen-live',
+    storageBucket: 'kasir-gen-live.firebasestorage.app',
   );
 }

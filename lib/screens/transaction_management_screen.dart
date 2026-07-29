@@ -4,6 +4,7 @@ import 'package:kasir_gen/screens/transaction_form_screen.dart';
 import '../models/transaction.dart';
 import '../services/api_service.dart';
 import '../services/export_service.dart'; // Import service ekspor
+import '../services/pdf_invoice_service.dart';
 
 class TransactionManagementScreen extends StatefulWidget {
   const TransactionManagementScreen({super.key});
@@ -17,6 +18,7 @@ class _TransactionManagementScreenState
     extends State<TransactionManagementScreen> {
   final ApiService _apiService = ApiService();
   final ExportService _exportService = ExportService(); // Inisialisasi service
+  final PdfInvoiceService _pdfService = getPdfInvoiceService();
   DateTime _selectedDate = DateTime.now();
   late Future<List<Transaction>> _transactionsFuture;
   List<Transaction> _currentTransactions =
@@ -98,6 +100,17 @@ class _TransactionManagementScreenState
           DateTime(_selectedDate.year, _selectedDate.month + increment, 1);
       _refreshTransactions();
     });
+  }
+
+  Future<void> _downloadPaidReceipt(Transaction transaction) async {
+    try {
+      await _pdfService.generateAndOpen(transaction);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal membuat struk: $error')),
+      );
+    }
   }
 
   @override
@@ -202,11 +215,23 @@ class _TransactionManagementScreenState
                               ),
                           ],
                         ),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.delete_outline,
-                              color: Colors.red),
-                          onPressed: () => _deleteTransaction(trx.id),
-                          tooltip: 'Hapus Transaksi',
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (trx.status == TransactionStatus.paid)
+                              IconButton(
+                                icon: const Icon(Icons.picture_as_pdf,
+                                    color: Colors.green),
+                                onPressed: () => _downloadPaidReceipt(trx),
+                                tooltip: 'Unduh struk lunas',
+                              ),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline,
+                                  color: Colors.red),
+                              onPressed: () => _deleteTransaction(trx.id),
+                              tooltip: 'Hapus Transaksi',
+                            ),
+                          ],
                         ),
                       ),
                     );
