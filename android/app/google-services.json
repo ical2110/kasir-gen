@@ -1,15 +1,16 @@
 {
   "project_info": {
     "project_number": "556265980791",
+    "firebase_url": "https://kasir-gen-live-default-rtdb.asia-southeast1.firebasedatabase.app",
     "project_id": "kasir-gen-live",
     "storage_bucket": "kasir-gen-live.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:556265980791:android:da9ec32952e1dbe2641772",
+        "mobilesdk_app_id": "1:556265980791:android:e2136de78aadc161641772",
         "android_client_info": {
-          "package_name": "com.example.kasir_gen"
+          "package_name": "com.genesisxclean.kasir"
         }
       },
       "oauth_client": [],

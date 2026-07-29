@@ -50,7 +50,7 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
   final _notesController = TextEditingController();
   final _discountValueController = TextEditingController();
   final _discountNotesController = TextEditingController();
-  List<TransactionItemController> _itemControllers = [];
+  final List<TransactionItemController> _itemControllers = [];
   DiscountType _discountType = DiscountType.none;
   double _subtotalAmount = 0.0;
   double _discountAmount = 0.0;
@@ -242,7 +242,7 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
                 children: [
                   // Dropdown Pelanggan
                   DropdownButtonFormField<Customer>(
-                    value: _selectedCustomer,
+                    initialValue: _selectedCustomer,
                     // Menampilkan item yang dipilih meskipun sudah tidak ada di daftar
                     items: _customers.map((customer) {
                       return DropdownMenuItem<Customer>(
@@ -262,7 +262,7 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
 
                   // Dropdown Drop Point
                   DropdownButtonFormField<String>(
-                    value: _selectedSource,
+                    initialValue: _selectedSource,
                     items: ['Workshop', 'Dibarbers', 'Antar-jemput']
                         .map((source) => DropdownMenuItem<String>(
                               value: source,
@@ -285,7 +285,7 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
                     int index = entry.key;
                     TransactionItemController controller = entry.value;
                     return _buildTransactionItemRow(index, controller);
-                  }).toList(),
+                  }),
 
                   const SizedBox(height: 16),
 
@@ -433,7 +433,7 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
             ),
             const Divider(),
             DropdownButtonFormField<Service>(
-              value: controller.selectedService,
+              initialValue: controller.selectedService,
               hint: const Text('Pilih Layanan'),
               items: _services.map((service) {
                 return DropdownMenuItem<Service>(
@@ -459,7 +459,7 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
                   Expanded(
                     flex: 2,
                     child: DropdownButtonFormField<ServicePrice>(
-                      value: controller.selectedPrice,
+                      initialValue: controller.selectedPrice,
                       hint: const Text('Harga'),
                       items: controller.selectedService!.prices.map((price) {
                         return DropdownMenuItem<ServicePrice>(

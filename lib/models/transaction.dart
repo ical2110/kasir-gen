@@ -3,6 +3,8 @@ import 'package:kasir_gen/models/customer.dart';
 import 'package:kasir_gen/models/transaction_item.dart';
 
 enum TransactionStatus {
+  // Nama ini adalah nilai persisten di Firestore dan tidak boleh diubah.
+  // ignore: constant_identifier_names
   in_progress,
   completed,
   paid,

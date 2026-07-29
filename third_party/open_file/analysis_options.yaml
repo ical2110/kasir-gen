@@ -11,7 +11,8 @@
 # (the recommended set includes the core lints).
 # The core lints are also what is used by pub.dev for scoring packages.
 
-include: package:lints/recommended.yaml
+# Package ini disimpan sebagai dependency lokal. Tidak ada include eksternal
+# agar analyzer root tidak membutuhkan package lint tambahan untuk vendor ini.
 
 # Uncomment the following section to specify additional rules.
 

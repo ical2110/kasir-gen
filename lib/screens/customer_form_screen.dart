@@ -6,10 +6,10 @@ import '../services/api_service.dart';
 class CustomerFormScreen extends StatefulWidget {
   final Customer? customer; // Nullable, untuk membedakan mode Tambah dan Edit
 
-  CustomerFormScreen({this.customer});
+  const CustomerFormScreen({super.key, this.customer});
 
   @override
-  _CustomerFormScreenState createState() => _CustomerFormScreenState();
+  State<CustomerFormScreen> createState() => _CustomerFormScreenState();
 }
 
 class _CustomerFormScreenState extends State<CustomerFormScreen> {
@@ -63,14 +63,14 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
           if (!mounted) return;
           // Tampilkan pesan sukses
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Pelanggan berhasil diperbarui!')),
+            const SnackBar(content: Text('Pelanggan berhasil diperbarui!')),
           );
         } else {
           await apiService.addCustomer(customerData);
           if (!mounted) return;
           // Tampilkan pesan sukses
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Pelanggan baru berhasil disimpan!')),
+            const SnackBar(content: Text('Pelanggan baru berhasil disimpan!')),
           );
         }
 
@@ -105,13 +105,13 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
             children: [
               TextFormField(
                 controller: _nameController,
-                decoration: InputDecoration(labelText: 'Nama Lengkap'),
+                decoration: const InputDecoration(labelText: 'Nama Lengkap'),
                 validator: (value) =>
                     value!.isEmpty ? 'Nama tidak boleh kosong' : null,
               ),
               TextFormField(
                 controller: _phoneController,
-                decoration: InputDecoration(labelText: 'Nomor Telepon'),
+                decoration: const InputDecoration(labelText: 'Nomor Telepon'),
                 keyboardType: TextInputType.phone,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 validator: (value) =>
@@ -119,12 +119,13 @@ class _CustomerFormScreenState extends State<CustomerFormScreen> {
               ),
               TextFormField(
                 controller: _alamatController,
-                decoration: InputDecoration(labelText: 'Alamat (Opsional)'),
+                decoration:
+                    const InputDecoration(labelText: 'Alamat (Opsional)'),
                 keyboardType: TextInputType.streetAddress,
               ),
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
               _isLoading
-                  ? Center(child: CircularProgressIndicator())
+                  ? const Center(child: CircularProgressIndicator())
                   : ElevatedButton(
                       onPressed: _saveCustomer,
                       child:

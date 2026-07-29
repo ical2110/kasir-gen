@@ -10,7 +10,6 @@ service cloud.firestore {
     }
     function admin() { return signedIn() && role() == 'admin'; }
     function cashier() { return approved() && role() == 'cashier'; }
-    function ownsExisting() { return signedIn() && resource.data.owner_id == request.auth.uid; }
     function ownsNew() { return signedIn() && request.resource.data.owner_id == request.auth.uid; }
     function customerExists() {
       return exists(/databases/$(database)/documents/customers/$(request.resource.data.customer_id));

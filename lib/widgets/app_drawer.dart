@@ -43,7 +43,7 @@ class AppDrawer extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                    builder: (context) => CustomerManagementScreen()),
+                    builder: (context) => const CustomerManagementScreen()),
               );
             },
           ),
@@ -63,7 +63,7 @@ class AppDrawer extends StatelessWidget {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => ServiceManagementScreen(),
+                          builder: (context) => const ServiceManagementScreen(),
                         ),
                       );
                     },

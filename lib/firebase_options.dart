@@ -52,7 +52,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyCyLZreHVIYPbAONbc7vryJcuvpGf8Fc7Q',
-    appId: '1:556265980791:android:da9ec32952e1dbe2641772',
+    appId: '1:556265980791:android:e2136de78aadc161641772',
     messagingSenderId: '556265980791',
     projectId: 'kasir-gen-live',
     storageBucket: 'kasir-gen-live.firebasestorage.app',

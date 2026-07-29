@@ -1,7 +1,8 @@
-import 'dart:html' as html;
+import 'dart:js_interop';
 import 'dart:typed_data';
 
 import 'package:share_plus/share_plus.dart';
+import 'package:web/web.dart' as web;
 
 import '../models/transaction.dart';
 import 'invoice_pdf_document.dart';
@@ -11,16 +12,21 @@ class _WebPdfInvoiceService implements PdfInvoiceService {
   @override
   Future<void> generateAndOpen(Transaction transaction) async {
     final bytes = await buildInvoicePdf(transaction);
-    final blob = html.Blob([bytes], 'application/pdf');
-    final url = html.Url.createObjectUrlFromBlob(blob);
-    final link = html.AnchorElement(href: url)
+    final data = Uint8List.fromList(bytes).toJS;
+    final blob = web.Blob(
+      <web.BlobPart>[data].toJS,
+      web.BlobPropertyBag(type: 'application/pdf'),
+    );
+    final url = web.URL.createObjectURL(blob);
+    final link = web.HTMLAnchorElement()
+      ..href = url
       ..download = 'invoice-${transaction.id}.pdf'
       ..style.display = 'none';
 
-    html.document.body?.children.add(link);
+    web.document.body?.appendChild(link);
     link.click();
     link.remove();
-    html.Url.revokeObjectUrl(url);
+    web.URL.revokeObjectURL(url);
   }
 
   @override

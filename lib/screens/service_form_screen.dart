@@ -213,7 +213,7 @@ class _ServiceFormScreenState extends State<ServiceFormScreen> {
                     ],
                   ),
                 );
-              }).toList(),
+              }),
               const SizedBox(height: 24),
               _isLoading
                   ? const Center(child: CircularProgressIndicator())

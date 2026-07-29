@@ -28,6 +28,8 @@ class PrintingServiceImpl implements PrintingService {
         throw 'Tidak ada printer Bluetooth yang ter-pairing. Silakan pairing printer Anda melalui pengaturan Bluetooth perangkat.';
       }
 
+      if (!context.mounted) return;
+
       // 3. Tampilkan dialog untuk memilih printer
       BluetoothDevice? selectedDevice = await showDialog<BluetoothDevice>(
         context: context,

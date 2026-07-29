@@ -44,6 +44,7 @@ dependencies:
   url_launcher: ^6.3.2
   share_plus: ^10.0.0
   shared_preferences: ^2.3.2
+  web: ^0.5.1
   firebase_core: ^2.32.0
   cloud_firestore: ^4.10.0
   excel: ^4.0.2 # Untuk membuat dan mengelola file Excel

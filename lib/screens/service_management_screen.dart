@@ -5,8 +5,10 @@ import '../services/api_service.dart';
 import 'service_form_screen.dart';
 
 class ServiceManagementScreen extends StatefulWidget {
+  const ServiceManagementScreen({super.key});
+
   @override
-  _ServiceManagementScreenState createState() =>
+  State<ServiceManagementScreen> createState() =>
       _ServiceManagementScreenState();
 }
 
@@ -83,13 +85,13 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Manajemen Layanan'),
+        title: const Text('Manajemen Layanan'),
       ),
       body: FutureBuilder<List<Service>>(
         future: _servicesFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
+            return const Center(child: CircularProgressIndicator());
           } else if (snapshot.hasError) {
             return Center(
               child: Padding(
@@ -99,15 +101,17 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen> {
                   children: [
                     Text('Error: ${snapshot.error}',
                         textAlign: TextAlign.center),
-                    SizedBox(height: 20),
+                    const SizedBox(height: 20),
                     ElevatedButton(
-                        onPressed: _refreshServices, child: Text('Coba Lagi')),
+                        onPressed: _refreshServices,
+                        child: const Text('Coba Lagi')),
                   ],
                 ),
               ),
             );
           } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return Center(child: Text('Belum ada layanan yang ditambahkan.'));
+            return const Center(
+                child: Text('Belum ada layanan yang ditambahkan.'));
           } else {
             final services = snapshot.data!;
             return ListView.builder(
@@ -177,7 +181,7 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen> {
                               ),
                             ),
                           );
-                        }).toList(),
+                        }),
                       ],
                     ),
                   ),
@@ -189,8 +193,8 @@ class _ServiceManagementScreenState extends State<ServiceManagementScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _navigateAndRefresh,
-        child: Icon(Icons.add),
         tooltip: 'Tambah Layanan',
+        child: const Icon(Icons.add),
       ),
     );
   }

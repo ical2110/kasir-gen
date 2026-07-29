@@ -1,11 +1,11 @@
 {
-    "name": "kasir_gen",
-    "short_name": "kasir_gen",
+    "name": "GenesisxClean Kasir",
+    "short_name": "GenesisxClean",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Aplikasi kasir internal GenesisxClean.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

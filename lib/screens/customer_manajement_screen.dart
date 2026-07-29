@@ -4,8 +4,10 @@ import '../screens/customer_form_screen.dart';
 import '../services/api_service.dart'; // Import ApiService
 
 class CustomerManagementScreen extends StatefulWidget {
+  const CustomerManagementScreen({super.key});
+
   @override
-  _CustomerManagementScreenState createState() =>
+  State<CustomerManagementScreen> createState() =>
       _CustomerManagementScreenState();
 }
 
@@ -80,17 +82,17 @@ class _CustomerManagementScreenState extends State<CustomerManagementScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Manajemen Pelanggan'),
+        title: const Text('Manajemen Pelanggan'),
       ),
       body: FutureBuilder<List<Customer>>(
         future: _customersFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
+            return const Center(child: CircularProgressIndicator());
           } else if (snapshot.hasError) {
             return Center(child: Text('Error: ${snapshot.error}'));
           } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return Center(child: Text('Tidak ada data pelanggan.'));
+            return const Center(child: Text('Tidak ada data pelanggan.'));
           } else {
             final customers = snapshot.data!;
             return ListView.builder(
@@ -98,10 +100,10 @@ class _CustomerManagementScreenState extends State<CustomerManagementScreen> {
               itemBuilder: (context, index) {
                 final customer = customers[index];
                 return ListTile(
-                  leading: Icon(Icons.person_outline),
+                  leading: const Icon(Icons.person_outline),
                   title: Text(
                     customer.name,
-                    style: TextStyle(
+                    style: const TextStyle(
                         color: Colors.black, fontWeight: FontWeight.bold),
                   ),
                   subtitle: Text(customer.phone),
@@ -109,12 +111,12 @@ class _CustomerManagementScreenState extends State<CustomerManagementScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
-                        icon: Icon(Icons.edit, color: Colors.blue),
+                        icon: const Icon(Icons.edit, color: Colors.blue),
                         onPressed: () =>
                             _navigateAndRefresh(customer: customer),
                       ),
                       IconButton(
-                        icon: Icon(Icons.delete, color: Colors.red),
+                        icon: const Icon(Icons.delete, color: Colors.red),
                         onPressed: () => _deleteCustomer(customer.id),
                       ),
                     ],
@@ -127,8 +129,8 @@ class _CustomerManagementScreenState extends State<CustomerManagementScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _navigateAndRefresh(),
-        child: Icon(Icons.add),
         tooltip: 'Tambah Pelanggan',
+        child: const Icon(Icons.add),
       ),
     );
   }

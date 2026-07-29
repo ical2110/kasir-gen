@@ -25,4 +25,10 @@ Untuk membuat admin pertama: buat akun dari aplikasi, buka Firestore Console, la
 
 Konfigurasi Gradle menggunakan Groovy saja; file Kotlin DSL duplikat sudah dihapus. Sebelum membuat APK/AAB rilis, salin `android/key.properties.example` menjadi `android/key.properties`, isi lokasi keystore serta kredensialnya, lalu simpan file tersebut di luar Git.
 
-Application ID Android saat ini tetap `com.example.kasir_gen` karena itulah ID yang terdaftar pada `google-services.json`. Jika ingin menggantinya untuk Play Store, daftarkan aplikasi Android baru pada Firebase dan jalankan ulang konfigurasi FlutterFire terlebih dahulu.
+Application ID Android adalah `com.genesisxclean.kasir` dan sudah terdaftar sebagai app Android pada Firebase project `kasir-gen-live`.
+
+## Web release
+
+Gunakan `make deploy-web` agar deployment selalu membuat build release dengan
+cache PWA dinonaktifkan. Ini mencegah Safari mempertahankan versi aplikasi lama
+setelah deployment.
