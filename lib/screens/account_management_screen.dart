@@ -7,6 +7,57 @@ import '../services/role_service.dart';
 class AccountManagementScreen extends StatelessWidget {
   const AccountManagementScreen({super.key});
 
+  Future<void> _editName(
+    BuildContext context,
+    AppUser account,
+  ) async {
+    var editedName = account.name;
+    final name = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Ubah Nama Akun'),
+        content: TextFormField(
+          initialValue: account.name,
+          autofocus: true,
+          textCapitalization: TextCapitalization.words,
+          decoration: const InputDecoration(labelText: 'Nama lengkap'),
+          onChanged: (value) => editedName = value,
+          onFieldSubmitted: (value) {
+            if (value.trim().length >= 2) {
+              Navigator.pop(dialogContext, value.trim());
+            }
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final value = editedName.trim();
+              if (value.length >= 2) Navigator.pop(dialogContext, value);
+            },
+            child: const Text('Simpan'),
+          ),
+        ],
+      ),
+    );
+    if (name == null || !context.mounted) return;
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(account.uid)
+          .update({'name': name});
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal menyimpan nama: $error')),
+      );
+    }
+  }
+
   Future<void> _setApproval(
     BuildContext context,
     String uid,
@@ -78,15 +129,31 @@ class AccountManagementScreen extends StatelessWidget {
                   secondary: Icon(
                     account.isAdmin ? Icons.admin_panel_settings : Icons.person,
                   ),
-                  title: Text(
-                    account.email.isEmpty ? account.uid : account.email,
+                  title: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          account.name.isEmpty
+                              ? 'Nama belum tersedia'
+                              : account.name,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.edit_outlined, size: 20),
+                        tooltip: 'Ubah nama',
+                        onPressed: () => _editName(context, account),
+                      ),
+                    ],
                   ),
                   subtitle: Text(
-                    account.isAdmin
-                        ? 'Admin'
-                        : account.approved
-                            ? 'Kasir aktif'
-                            : 'Menunggu verifikasi',
+                    [
+                      if (account.email.isNotEmpty) account.email,
+                      account.isAdmin
+                          ? 'Admin'
+                          : account.approved
+                              ? 'Kasir aktif'
+                              : 'Menunggu verifikasi',
+                    ].join(' • '),
                   ),
                   value: account.approved,
                   onChanged: account.isAdmin || isCurrentAdmin

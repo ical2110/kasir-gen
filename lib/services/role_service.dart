@@ -6,12 +6,14 @@ enum UserRole { admin, cashier }
 class AppUser {
   const AppUser({
     required this.uid,
+    required this.name,
     required this.email,
     required this.role,
     required this.approved,
   });
 
   final String uid;
+  final String name;
   final String email;
   final UserRole role;
   final bool approved;
@@ -26,6 +28,7 @@ class AppUser {
 
     return AppUser(
       uid: document.id,
+      name: data['name'] as String? ?? '',
       email: data['email'] as String? ?? '',
       role: role,
       // Dokumen pengguna lama dibuat sebelum fitur verifikasi. Biarkan akun

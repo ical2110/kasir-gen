@@ -11,6 +11,7 @@ class SignInScreen extends StatefulWidget {
 
 class _SignInScreenState extends State<SignInScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _createAccount = false;
@@ -18,6 +19,7 @@ class _SignInScreenState extends State<SignInScreen> {
 
   @override
   void dispose() {
+    _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -38,6 +40,7 @@ class _SignInScreenState extends State<SignInScreen> {
             .collection('users')
             .doc(credential.user!.uid)
             .set({
+          'name': _nameController.text.trim(),
           'email': credential.user!.email ?? _emailController.text.trim(),
           'role': 'cashier',
           'approved': false,
@@ -99,6 +102,21 @@ class _SignInScreenState extends State<SignInScreen> {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 24),
+                  if (_createAccount) ...[
+                    TextFormField(
+                      controller: _nameController,
+                      textCapitalization: TextCapitalization.words,
+                      decoration:
+                          const InputDecoration(labelText: 'Nama lengkap'),
+                      validator: (value) {
+                        if (!_createAccount) return null;
+                        return value != null && value.trim().length >= 2
+                            ? null
+                            : 'Masukkan nama lengkap.';
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   TextFormField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
